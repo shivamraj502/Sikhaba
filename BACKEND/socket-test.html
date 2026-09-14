@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sikhaba Socket Test</title>
+</head>
+<body>
+  <h2>Socket Test — check browser console (F12)</h2>
+  <p>Status: <span id="status">connecting...</span></p>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    // 🔑 PASTE YOUR REAL JWT TOKEN HERE (from login response)
+    const TOKEN = "PASTE_YOUR_TOKEN_HERE";
+
+    const socket = io("http://localhost:5000", {
+      auth: { token: TOKEN }
+    });
+
+    socket.on("connect", () => {
+      console.log("✅ Connected! Socket ID:", socket.id);
+      document.getElementById("status").innerText = "connected";
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("❌ Connection error:", err.message);
+      document.getElementById("status").innerText = "error: " + err.message;
+    });
+
+    socket.on("disconnect", () => {
+      console.log("🔌 Disconnected");
+    });
+
+    // Listen for all the events we built
+    socket.on("participant-joined", (data) => console.log("👤 participant-joined:", data));
+    socket.on("participant-left", (data) => console.log("👋 participant-left:", data));
+    socket.on("hand-raised", (data) => console.log("✋ hand-raised:", data));
+    socket.on("speaker-approved", (data) => console.log("🎤 speaker-approved:", data));
+    socket.on("speaker-rejected", (data) => console.log("🚫 speaker-rejected:", data));
+    socket.on("mic-status-changed", (data) => console.log("🔇 mic-status-changed:", data));
+    socket.on("room-ended", () => console.log("🛑 room-ended"));
+
+    // Expose socket globally so you can call socket.emit(...) manually from the console
+    window.socket = socket;
+  </script>
+</body>
+</html>
