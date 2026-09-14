@@ -10,7 +10,7 @@
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
     // 🔑 PASTE YOUR REAL JWT TOKEN HERE (from login response)
-    const TOKEN = "PASTE_YOUR_TOKEN_HERE";
+    const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWwiOiJzaGl2YWFtcmFqODEwMjAwNUBnbWFpbC5jb20iLCJwaG9uZSI6bnVsbCwiaWF0IjoxNzg5NDE4ODQ2LCJleHAiOjE3OTAwMjM2NDZ9.V1HyFAq8VUyyQIF3RYBh6LlZ4aLj_ZAmDJTlkGVAy_o";
 
     const socket = io("http://localhost:5000", {
       auth: { token: TOKEN }
@@ -19,7 +19,13 @@
     socket.on("connect", () => {
       console.log("✅ Connected! Socket ID:", socket.id);
       document.getElementById("status").innerText = "connected";
+      socket.emit('join-room', { room_id: 1 });   // add this line
     });
+
+    // socket.on('connect', () => {
+    // console.log('✅ Connected! Socket ID:', socket.id);
+    // socket.emit('join-room', { room_id: 1 });   // add this line
+    // });
 
     socket.on("connect_error", (err) => {
       console.error("❌ Connection error:", err.message);
