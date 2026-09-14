@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const { testConnection } = require('./config/db');
 const authRoutes = require('./modules/auth/auth.routes');
+const authMiddleware = require('./middlewares/authMiddleware');
 
 const app = express();
 
