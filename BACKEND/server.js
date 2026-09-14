@@ -7,7 +7,8 @@ const { testConnection } = require('./config/db');
 const authRoutes = require('./modules/auth/auth.routes');
 const authMiddleware = require('./middlewares/authMiddleware');
 const roomRoutes = require('./modules/rooms/room.routes');
-const initSocket = require('./sockets/index');  
+const initSocket = require('./sockets/index');
+const moderationRoutes = require('./modules/moderation/moderation.routes');
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/moderation', moderationRoutes);
 
 // Health check route — confirms server is alive
 app.get('/api/health', (req, res) => {
