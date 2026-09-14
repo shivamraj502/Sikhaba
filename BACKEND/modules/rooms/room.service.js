@@ -1,4 +1,5 @@
 const { pool } = require('../../config/db');
+const { isUserBannedFromRoom } = require('../moderation/ban.service');
 
 async function createRoom({ host_id, title, language }) {
   const [result] = await pool.query(
@@ -37,6 +38,9 @@ async function getRoomById(room_id) {
 async function joinRoom({ room_id, user_id }) {
   const room = await getRoomById(room_id);
   if (room.status !== 'live') throw new Error('Room is not live');
+
+  const banned = await isUserBannedFromRoom({ room_id, user_id });
+  if (banned) throw new Error('You are banned from this room');
 
   // Check if already an active participant (avoid duplicate rows on rejoin)
   const [existing] = await pool.query(
