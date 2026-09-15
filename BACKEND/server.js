@@ -27,7 +27,7 @@ app.get('/api/health', (req, res) => {
 });
 
 const server = http.createServer(app);                  
-initSocket(server);  
+initSocket(server);
 
 const PORT = process.env.PORT || 5000;
 
