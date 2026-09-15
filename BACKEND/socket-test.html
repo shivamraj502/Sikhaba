@@ -17,7 +17,7 @@
     });
 
     socket.on("connect", () => {
-      console.log("✅ Connected! Socket ID:", socket.id);
+      console.log("✅ Connected! Socket ID:", socket.id); 
       document.getElementById("status").innerText = "connected";
       socket.emit('join-room', { room_id: 1 });   // add this line
     });
