@@ -9,6 +9,8 @@ const authMiddleware = require('./middlewares/authMiddleware');
 const roomRoutes = require('./modules/rooms/room.routes');
 const initSocket = require('./sockets/index');
 const moderationRoutes = require('./modules/moderation/moderation.routes');
+const subscriptionRoutes = require('./modules/subscription/subscription.routes');
+const startExpireSubscriptionsJob = require('./jobs/expireSubscriptions');
 
 const app = express();
 
@@ -17,6 +19,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/moderation', moderationRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 
 // Health check route — confirms server is alive
 app.get('/api/health', (req, res) => {
@@ -32,3 +35,5 @@ server.listen(PORT, async () => {                        // ← changed from app
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   await testConnection();
 });
+
+startExpireSubscriptionsJob();
