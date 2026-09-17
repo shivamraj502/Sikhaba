@@ -79,6 +79,15 @@ async function respondToRequest(req, res) {
   }
 }
 
+async function getRoom(req, res) {
+  try {
+    const room = await roomService.getRoomById(req.params.id);
+    res.json(room);
+  } catch (err) {
+    res.status(404).json({ message: err.message });
+  }
+}
+
 module.exports = {
   createRoom,
   getLiveRooms,
