@@ -91,6 +91,7 @@ async function getRoom(req, res) {
 module.exports = {
   createRoom,
   getLiveRooms,
+  getRoom,
   joinRoom,
   leaveRoom,
   endRoom,
