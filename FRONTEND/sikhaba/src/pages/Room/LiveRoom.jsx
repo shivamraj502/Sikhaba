@@ -1,17 +1,9 @@
-// import { useParams } from 'react-router-dom';
-
-// function LiveRoom() {
-//   const { roomId } = useParams();
-//   return <div>Live Room #{roomId} — full room UI coming next</div>;
-// }
-
-// export default LiveRoom;
-
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { connectSocket, getSocket, disconnectSocket } from '../../sockets/socketClient';
 import {
+  getRoomById,
   requestToSpeak,
   getPendingRequests,
   respondToRequest,
@@ -24,73 +16,99 @@ function LiveRoom() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [room, setRoom] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [handsRaised, setHandsRaised] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
-  const [mySpeakerStatus, setMySpeakerStatus] = useState(null); // 'pending' | 'approved' | 'rejected'
-  const [isHost, setIsHost] = useState(false); // simplistic — refine once room data includes host_id
+  const [mySpeakerStatus, setMySpeakerStatus] = useState(null);
   const socketRef = useRef(null);
 
+  const isHost = room && user && room.host_id === user.id;
+
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const socket = connectSocket(token);
-    socketRef.current = socket;
+    async function init() {
+      try {
+        const roomRes = await getRoomById(roomId);
+        setRoom(roomRes.data);
+      } catch (err) {
+        alert('Room not found');
+        navigate('/home');
+        return;
+      }
 
-    socket.emit('join-room', { room_id: roomId });
+      const token = localStorage.getItem('token');
+      const socket = connectSocket(token);
+      socketRef.current = socket;
 
-    socket.on('participant-joined', (data) => {
-      setParticipants((prev) => [...prev, data]);
-    });
+      socket.emit('join-room', { room_id: roomId });
 
-    socket.on('participant-left', (data) => {
-      setParticipants((prev) => prev.filter((p) => p.user_id !== data.user_id));
-    });
+      socket.on('participant-joined', (data) => {
+        setParticipants((prev) => [...prev, data]);
+      });
 
-    socket.on('hand-raised', (data) => {
-      setHandsRaised((prev) => [...prev, data]);
-    });
+      socket.on('participant-left', (data) => {
+        setParticipants((prev) => prev.filter((p) => p.user_id !== data.user_id));
+      });
 
-    socket.on('speaker-approved', (data) => {
-      if (data.user_id === user.id) setMySpeakerStatus('approved');
-      setHandsRaised((prev) => prev.filter((h) => h.user_id !== data.user_id));
-    });
+      socket.on('hand-raised', (data) => {
+        setHandsRaised((prev) => [...prev, data]);
+      });
 
-    socket.on('speaker-rejected', (data) => {
-      if (data.user_id === user.id) setMySpeakerStatus('rejected');
-      setHandsRaised((prev) => prev.filter((h) => h.user_id !== data.user_id));
-    });
+      socket.on('speaker-approved', (data) => {
+        if (data.user_id === user.id) setMySpeakerStatus('approved');
+        setHandsRaised((prev) => prev.filter((h) => h.user_id !== data.user_id));
+      });
 
-    socket.on('room-ended', () => {
-      alert('This room has ended.');
-      navigate('/home');
-    });
+      socket.on('speaker-rejected', (data) => {
+        if (data.user_id === user.id) setMySpeakerStatus('rejected');
+        setHandsRaised((prev) => prev.filter((h) => h.user_id !== data.user_id));
+      });
 
-    // Refresh pending requests periodically if host (simple polling for now)
-    loadPendingRequests();
+      socket.on('room-ended', () => {
+        alert('This room has ended.');
+        navigate('/home');
+      });
+    }
+
+    init();
 
     return () => {
-      socket.emit('leave-room', { room_id: roomId });
-      socket.off('participant-joined');
-      socket.off('participant-left');
-      socket.off('hand-raised');
-      socket.off('speaker-approved');
-      socket.off('speaker-rejected');
-      socket.off('room-ended');
+      const socket = socketRef.current;
+      if (socket) {
+        socket.emit('leave-room', { room_id: roomId });
+        socket.off('participant-joined');
+        socket.off('participant-left');
+        socket.off('hand-raised');
+        socket.off('speaker-approved');
+        socket.off('speaker-rejected');
+        socket.off('room-ended');
+      }
     };
   }, [roomId]);
 
-  async function loadPendingRequests() {
-    try {
-      const res = await getPendingRequests(roomId);
-      setPendingRequests(res.data);
-      setIsHost(true); // if this succeeds (200), user is the host — backend rejects non-hosts differently in a future pass
-    } catch (err) {
-      setIsHost(false); // not host, or no requests endpoint access
+  // Load pending requests only once we know we're the host
+  useEffect(() => {
+    if (isHost) {
+      getPendingRequests(roomId)
+        .then((res) => setPendingRequests(res.data))
+        .catch(() => {});
     }
-  }
+  }, [isHost, roomId]);
 
+  //
+  // async function loadPendingRequests() {
+  //   try {
+  //     const res = await getPendingRequests(roomId);
+  //     setPendingRequests(res.data);
+  //     setIsHost(true); // if this succeeds (200), user is the host — backend rejects non-hosts differently in a future pass
+  //   } catch (err) {
+  //     setIsHost(false); // not host, or no requests endpoint access
+  //   }
+  // }
+
+  //
   async function handleRaiseHand() {
     try {
       await requestToSpeak(roomId);
