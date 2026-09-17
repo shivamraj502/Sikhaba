@@ -97,18 +97,6 @@ function LiveRoom() {
     }
   }, [isHost, roomId]);
 
-  //
-  // async function loadPendingRequests() {
-  //   try {
-  //     const res = await getPendingRequests(roomId);
-  //     setPendingRequests(res.data);
-  //     setIsHost(true); // if this succeeds (200), user is the host — backend rejects non-hosts differently in a future pass
-  //   } catch (err) {
-  //     setIsHost(false); // not host, or no requests endpoint access
-  //   }
-  // }
-
-  //
   async function handleRaiseHand() {
     try {
       await requestToSpeak(roomId);
