@@ -7,6 +7,7 @@ router.use(authMiddleware); // every room route requires login
 
 router.post('/', roomController.createRoom);                          // create room (become host)
 router.get('/', roomController.getLiveRooms);                         // list live rooms
+router.get('/:id', roomController.getRoom);   // add this — place BEFORE other /:id/... routes aren't affected since Express matches by full path
 router.post('/:id/join', roomController.joinRoom);                    // join as listener
 router.post('/:id/leave', roomController.leaveRoom);                  // leave room
 router.post('/:id/end', roomController.endRoom);                      // host ends room
