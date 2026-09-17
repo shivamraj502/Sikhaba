@@ -1,6 +1,7 @@
 import axiosInstance from './axiosInstance';
 
 export const getLiveRooms = () => axiosInstance.get('/rooms');
+export const getRoomById = (roomId) => axiosInstance.get(`/rooms/${roomId}`);   // ← added
 export const createRoom = (data) => axiosInstance.post('/rooms', data);
 export const joinRoom = (roomId) => axiosInstance.post(`/rooms/${roomId}/join`);
 export const leaveRoom = (roomId) => axiosInstance.post(`/rooms/${roomId}/leave`);
