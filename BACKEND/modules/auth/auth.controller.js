@@ -56,7 +56,7 @@ async function updateProfile(req, res) {
   }
 }
 
-module.exports = { 
+module.exports = {  
   signup, 
   login, 
   sendOtp, 
