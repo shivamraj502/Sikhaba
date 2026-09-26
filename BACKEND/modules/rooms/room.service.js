@@ -101,5 +101,6 @@ module.exports = {
   getRoomById,
   joinRoom,
   leaveRoom,
-  endRoom
+  endRoom,
+  getChatHistory
 };
