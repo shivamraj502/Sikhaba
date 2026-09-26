@@ -88,12 +88,22 @@ async function getRoom(req, res) {
   }
 }
 
+async function getChatHistory(req, res) {
+  try {
+    const history = await roomService.getChatHistory(req.params.id);
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
 module.exports = {
   createRoom,
   getLiveRooms,
   getRoom,
   joinRoom,
   leaveRoom,
+  getChatHistory,
   endRoom,
   requestToSpeak,
   getPendingRequests,
