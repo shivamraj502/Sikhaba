@@ -12,6 +12,27 @@ function registerRoomEvents(io, socket) {
     });
   });
 
+  socket.on('send-message', async ({ room_id, message }) => {
+    if (!message || !message.trim()) return;
+
+    try {
+      const [result] = await pool.query(
+        'INSERT INTO chat_messages (room_id, user_id, message) VALUES (?, ?, ?)',
+        [room_id, socket.user.id, message]
+      );
+
+      io.to(`room-${room_id}`).emit('new-message', {
+        id: result.insertId,
+        user_id: socket.user.id,
+        name: socket.user.name,
+        message,
+        sent_at: new Date()
+      });
+    } catch (err) {
+      console.error('Failed to save chat message:', err.message);
+    }
+  });
+
   socket.on('leave-room', ({ room_id }) => {
     socket.leave(`room-${room_id}`);
     socket.to(`room-${room_id}`).emit('participant-left', {
