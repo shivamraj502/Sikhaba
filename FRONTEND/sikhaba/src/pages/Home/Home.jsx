@@ -53,6 +53,7 @@ function Home() {
         <h2>🌐 Sikhaba — Live Rooms</h2>
         <div>
           <span>Hi, {user?.name}</span>
+          <button onClick={() => navigate('/profile')} style={{ marginLeft: 8 }}>Profile</button>
           <button onClick={logout} style={{ marginLeft: 12 }}>Logout</button>
         </div>
       </div>
