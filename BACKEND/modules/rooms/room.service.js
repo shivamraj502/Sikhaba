@@ -84,6 +84,17 @@ async function endRoom({ room_id, host_id }) {
   return { message: 'Room ended' };
 }
 
+async function getChatHistory(room_id) {
+  const [rows] = await pool.query(
+    `SELECT cm.*, u.name FROM chat_messages cm
+     JOIN users u ON cm.user_id = u.id
+     WHERE cm.room_id = ?
+     ORDER BY cm.sent_at ASC`,
+    [room_id]
+  );
+  return rows;
+}
+
 module.exports = {
   createRoom,
   getLiveRooms,
