@@ -38,4 +38,29 @@ async function verifyOtp(req, res) {
   }
 }
 
-module.exports = { signup, login, sendOtp, verifyOtp };
+async function getProfile(req, res) {
+  try {
+    const profile = await authService.getProfile(req.user.id);
+    res.json(profile);
+  } catch (err) {
+    res.status(404).json({ message: err.message });
+  }
+}
+
+async function updateProfile(req, res) {
+  try {
+    const profile = await authService.updateProfile(req.user.id, req.body);
+    res.json(profile);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+}
+
+module.exports = { 
+  signup, 
+  login, 
+  sendOtp, 
+  verifyOtp, 
+  getProfile, 
+  updateProfile 
+};

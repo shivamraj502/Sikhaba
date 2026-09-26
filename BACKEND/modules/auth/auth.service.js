@@ -103,9 +103,28 @@ async function verifyOtpAndLogin({ phone, otp_code, name, country_code }) {
   return { user, token };
 }
 
+async function getProfile(user_id) {
+  const [rows] = await pool.query(
+    'SELECT id, name, email, phone, country_code, avatar_url, role, created_at FROM users WHERE id = ?',
+    [user_id]
+  );
+  if (rows.length === 0) throw new Error('User not found');
+  return rows[0];
+}
+
+async function updateProfile(user_id, { name, country_code, avatar_url }) {
+  await pool.query(
+    'UPDATE users SET name = COALESCE(?, name), country_code = COALESCE(?, country_code), avatar_url = COALESCE(?, avatar_url) WHERE id = ?',
+    [name || null, country_code || null, avatar_url || null, user_id]
+  );
+  return getProfile(user_id);
+}
+
 module.exports = {
   signupWithEmail,
   loginWithEmail,
   sendOtp,
-  verifyOtpAndLogin
+  verifyOtpAndLogin,
+  getProfile,
+  updateProfile
 };
