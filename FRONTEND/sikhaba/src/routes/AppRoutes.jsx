@@ -5,6 +5,7 @@ import OtpVerify from '../pages/Auth/OtpVerify';
 import Home from '../pages/Home/Home';
 import LiveRoom from '../pages/Room/LiveRoom';
 import { useAuth } from '../context/AuthContext';
+import UserProfile from '../pages/Profile/UserProfile';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -21,6 +22,8 @@ function AppRoutes() {
       <Route path="/home" element={user ? <Home /> : <Navigate to="/login" />} />
       <Route path="/room/:roomId" element={user ? <LiveRoom /> : <Navigate to="/login" />} />
       <Route path="/" element={<Navigate to={user ? '/home' : '/login'} />} />
+      <Route path="/profile" element={user ? <UserProfile /> : <Navigate to="/login" />} />
+      
     </Routes>
   );
 }
