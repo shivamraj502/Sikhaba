@@ -8,7 +8,8 @@ import {
   getPendingRequests,
   respondToRequest,
   endRoom,
-  leaveRoom
+  leaveRoom,
+  getChatHistory
 } from '../../api/roomApi';
 
 function LiveRoom() {
@@ -29,10 +30,27 @@ function LiveRoom() {
 
   useEffect(() => {
     async function init() {
+      // try {
+      //   const roomRes = await getRoomById(roomId);
+      //   setRoom(roomRes.data);
+      // }
+      // catch (err) {
+      //   alert('Room not found');
+      //   navigate('/home');
+      //   return;
+      // }
       try {
         const roomRes = await getRoomById(roomId);
         setRoom(roomRes.data);
+      try {
+        const historyRes = await getChatHistory(roomId);
+        setMessages(
+          historyRes.data.map((m) => ({ user: m.name, text: m.message })),
+        );
       } catch (err) {
+        console.error("Failed to load chat history");
+      }}
+      catch (err) {
         alert('Room not found');
         navigate('/home');
         return;
