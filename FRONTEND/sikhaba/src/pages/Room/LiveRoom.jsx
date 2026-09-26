@@ -30,30 +30,20 @@ function LiveRoom() {
 
   useEffect(() => {
     async function init() {
-      // try {
-      //   const roomRes = await getRoomById(roomId);
-      //   setRoom(roomRes.data);
-      // }
-      // catch (err) {
-      //   alert('Room not found');
-      //   navigate('/home');
-      //   return;
-      // }
       try {
         const roomRes = await getRoomById(roomId);
         setRoom(roomRes.data);
-      try {
-        const historyRes = await getChatHistory(roomId);
-        setMessages(
-          historyRes.data.map((m) => ({ user: m.name, text: m.message })),
-        );
       } catch (err) {
-        console.error("Failed to load chat history");
-      }}
-      catch (err) {
         alert('Room not found');
         navigate('/home');
         return;
+      }
+
+      try {
+        const historyRes = await getChatHistory(roomId);
+        setMessages(historyRes.data.map((m) => ({ user: m.name, text: m.message })));
+      } catch (err) {
+        console.error('Failed to load chat history');
       }
 
       const token = localStorage.getItem('token');
@@ -88,6 +78,10 @@ function LiveRoom() {
         alert('This room has ended.');
         navigate('/home');
       });
+
+      socket.on("new-message", (data) => {
+        setMessages((prev) => [...prev,{ user: data.name, text: data.message },]);
+      });
     }
 
     init();
@@ -102,6 +96,7 @@ function LiveRoom() {
         socket.off('speaker-approved');
         socket.off('speaker-rejected');
         socket.off('room-ended');
+        socket.off('new-message');
       }
     };
   }, [roomId]);
@@ -154,12 +149,18 @@ function LiveRoom() {
     navigate('/home');
   }
 
+  // function handleSendMessage(e) {
+  //   e.preventDefault();
+  //   if (!chatInput.trim()) return;
+  //   setMessages((prev) => [...prev, { user: user.name, text: chatInput }]);
+  //   // TODO: wire to a real chat socket event + persist via chat_messages table
+  //   setChatInput('');
+  // }
   function handleSendMessage(e) {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-    setMessages((prev) => [...prev, { user: user.name, text: chatInput }]);
-    // TODO: wire to a real chat socket event + persist via chat_messages table
-    setChatInput('');
+  e.preventDefault();
+  if (!chatInput.trim()) return;
+  socketRef.current.emit('send-message', { room_id: roomId, message: chatInput });
+  setChatInput('');
   }
 
   return (
