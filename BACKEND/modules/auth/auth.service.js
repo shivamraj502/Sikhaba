@@ -12,9 +12,16 @@ const JWT_EXPIRES_IN = '7d';
 //     { expiresIn: JWT_EXPIRES_IN }
 //   );
 // }
+// function generateToken(user) {
+//   return jwt.sign(
+//     { id: user.id, email: user.email, phone: user.phone, role: user.role },   
+//     JWT_SECRET,
+//     { expiresIn: JWT_EXPIRES_IN }
+//   );
+// }
 function generateToken(user) {
   return jwt.sign(
-    { id: user.id, email: user.email, phone: user.phone, role: user.role },   
+    { id: user.id, name: user.name, email: user.email, phone: user.phone },   // ← added name
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
