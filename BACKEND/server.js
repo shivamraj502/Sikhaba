@@ -31,7 +31,7 @@ initSocket(server);
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, async () => {                        // ← changed from app.listen to server.listen
+server.listen(PORT, async () => {                        
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   await testConnection();
 });
