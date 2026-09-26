@@ -15,5 +15,6 @@ router.post('/:id/end', roomController.endRoom);                      // host en
 router.post('/:id/speak-request', roomController.requestToSpeak);              // listener applies to speak
 router.get('/:id/speak-requests', roomController.getPendingRequests);          // host views pending requests
 router.post('/:id/speak-requests/:requestId/respond', roomController.respondToRequest); // host approves/rejects
+router.get('/:id/chat-history', roomController.getChatHistory);
 
 module.exports = router;
