@@ -97,6 +97,15 @@ async function getChatHistory(req, res) {
   }
 }
 
+async function getActiveParticipants(req, res) {
+  try {
+    const participants = await roomService.getActiveParticipants(req.params.id);
+    res.json(participants);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
 module.exports = {
   createRoom,
   getLiveRooms,
@@ -107,5 +116,6 @@ module.exports = {
   endRoom,
   requestToSpeak,
   getPendingRequests,
-  respondToRequest
+  respondToRequest,
+  getActiveParticipants
 };
