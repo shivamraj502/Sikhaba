@@ -95,6 +95,17 @@ async function getChatHistory(room_id) {
   return rows;
 }
 
+async function getActiveParticipants(room_id) {
+  const [rows] = await pool.query(
+    `SELECT rp.user_id, rp.role, u.name, u.country_code
+     FROM room_participants rp
+     JOIN users u ON rp.user_id = u.id
+     WHERE rp.room_id = ? AND rp.left_at IS NULL`,
+    [room_id]
+  );
+  return rows;
+}
+
 module.exports = {
   createRoom,
   getLiveRooms,
@@ -102,5 +113,6 @@ module.exports = {
   joinRoom,
   leaveRoom,
   endRoom,
-  getChatHistory
+  getChatHistory,
+  getActiveParticipants
 };
