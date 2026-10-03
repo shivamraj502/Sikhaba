@@ -33,20 +33,40 @@ function LiveRoom() {
   useEffect(() => {
     
     async function init() {
+      // try {
+      //   const roomRes = await getRoomById(roomId);
+      //   setRoom(roomRes.data);
+      // } catch (err) {
+      //   alert('Room not found');
+      //   navigate('/home');
+      //   return;
+      // }
+      let roomData;
       try {
         const roomRes = await getRoomById(roomId);
-        setRoom(roomRes.data);
+        roomData = roomRes.data;
+        setRoom(roomData);
       } catch (err) {
-        alert('Room not found');
-        navigate('/home');
+        alert("Room not found");
+        navigate("/home");
         return;
       }
+      const amHost = roomData.host_id === user.id;
 
       try {
         const historyRes = await getChatHistory(roomId);
         setMessages(historyRes.data.map((m) => ({ user: m.name, text: m.message })));
       } catch (err) {
         console.error('Failed to load chat history');
+      }
+
+      if (amHost) {
+        try {
+          const pendingRes = await getPendingRequests(roomId);
+          setPendingRequests(pendingRes.data);
+        } catch (err) {
+          console.error("Failed to load pending requests");
+        }
       }
 
       try {
@@ -89,8 +109,14 @@ function LiveRoom() {
         });
       });
 
-      socket.on('hand-raised', (data) => {
+      socket.on("hand-raised", (data) => {
         setHandsRaised((prev) => [...prev, data]);
+
+        if (amHost) {
+          getPendingRequests(roomId)
+            .then((res) => setPendingRequests(res.data))
+            .catch(() => {});
+        }
       });
 
       socket.on('speaker-approved', (data) => {
@@ -129,15 +155,6 @@ function LiveRoom() {
       }
     };
   }, [roomId]);
-
-  // Load pending requests only once we know we're the host
-  useEffect(() => {
-    if (isHost) {
-      getPendingRequests(roomId)
-        .then((res) => setPendingRequests(res.data))
-        .catch(() => {});
-    }
-  }, [isHost, roomId]);
 
   async function handleRaiseHand() {
     try {
