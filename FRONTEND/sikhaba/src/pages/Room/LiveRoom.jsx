@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { connectSocket, getSocket, disconnectSocket } from '../../sockets/socketClient';
+import { connectSocket } from '../../sockets/socketClient';
 import {
   getRoomById,
   requestToSpeak,
@@ -9,7 +9,8 @@ import {
   respondToRequest,
   endRoom,
   leaveRoom,
-  getChatHistory
+  getChatHistory,
+  getActiveParticipants
 } from '../../api/roomApi';
 
 function LiveRoom() {
@@ -19,6 +20,7 @@ function LiveRoom() {
 
   const [room, setRoom] = useState(null);
   const [participants, setParticipants] = useState([]);
+  // const { [user.id]: { name, country_code } } = user || {};
   const [handsRaised, setHandsRaised] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -46,18 +48,44 @@ function LiveRoom() {
         console.error('Failed to load chat history');
       }
 
+      try {
+        const participantsRes = await getActiveParticipants(roomId);
+        const initial = {};
+        participantsRes.data.forEach((p) => {
+          initial[p.user_id] = { name: p.name, country_code: p.country_code };
+        });
+        setParticipants(initial);
+      } catch (err) {
+        console.error("Failed to load participants");
+      }
+
       const token = localStorage.getItem('token');
       const socket = connectSocket(token);
       socketRef.current = socket;
 
       socket.emit('join-room', { room_id: roomId });
 
-      socket.on('participant-joined', (data) => {
-        setParticipants((prev) => [...prev, data]);
+      // socket.on('participant-joined', (data) => {
+      //   setParticipants((prev) => [...prev, data]);
+      // });
+
+      // socket.on('participant-left', (data) => {
+      //   setParticipants((prev) => prev.filter((p) => p.user_id !== data.user_id));
+      // });
+
+      socket.on("participant-joined", (data) => {
+        setParticipants((prev) => ({
+          ...prev,
+          [data.user_id]: { name: data.name, country_code: data.country_code },
+        }));
       });
 
-      socket.on('participant-left', (data) => {
-        setParticipants((prev) => prev.filter((p) => p.user_id !== data.user_id));
+      socket.on("participant-left", (data) => {
+        setParticipants((prev) => {
+          const updated = { ...prev };
+          delete updated[data.user_id];
+          return updated;
+        });
       });
 
       socket.on('hand-raised', (data) => {
@@ -149,13 +177,6 @@ function LiveRoom() {
     navigate('/home');
   }
 
-  // function handleSendMessage(e) {
-  //   e.preventDefault();
-  //   if (!chatInput.trim()) return;
-  //   setMessages((prev) => [...prev, { user: user.name, text: chatInput }]);
-  //   // TODO: wire to a real chat socket event + persist via chat_messages table
-  //   setChatInput('');
-  // }
   function handleSendMessage(e) {
   e.preventDefault();
   if (!chatInput.trim()) return;
@@ -164,41 +185,83 @@ function LiveRoom() {
   }
 
   return (
-    <div style={{ maxWidth: 700, margin: '20px auto', padding: '0 16px' }}>
+    <div style={{ maxWidth: 700, margin: "20px auto", padding: "0 16px" }}>
       <h2>🎙️ Live Room #{roomId}</h2>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-        {!isHost && mySpeakerStatus !== 'approved' && (
-          <button onClick={handleRaiseHand} disabled={mySpeakerStatus === 'pending'}>
-            {mySpeakerStatus === 'pending' ? '✋ Request sent...' : '✋ Raise Hand to Speak'}
+      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        {!isHost && mySpeakerStatus !== "approved" && (
+          <button
+            onClick={handleRaiseHand}
+            disabled={mySpeakerStatus === "pending"}
+          >
+            {mySpeakerStatus === "pending"
+              ? "✋ Request sent..."
+              : "✋ Raise Hand to Speak"}
           </button>
         )}
-        {mySpeakerStatus === 'approved' && <span>🎤 You're approved to speak!</span>}
-        {mySpeakerStatus === 'rejected' && <span>❌ Your request was declined.</span>}
+        {mySpeakerStatus === "approved" && (
+          <span>🎤 You're approved to speak!</span>
+        )}
+        {mySpeakerStatus === "rejected" && (
+          <span>❌ Your request was declined.</span>
+        )}
 
-        {isHost && <button onClick={handleEndRoom} style={{ color: 'red' }}>End Room</button>}
+        {isHost && (
+          <button onClick={handleEndRoom} style={{ color: "red" }}>
+            End Room
+          </button>
+        )}
         {!isHost && <button onClick={handleLeaveRoom}>Leave Room</button>}
       </div>
 
       {isHost && pendingRequests.length > 0 && (
-        <div style={{ border: '1px solid #f0ad4e', padding: 10, marginBottom: 16 }}>
+        <div
+          style={{ border: "1px solid #f0ad4e", padding: 10, marginBottom: 16 }}
+        >
           <h4>Speaker Requests</h4>
           {pendingRequests.map((req) => (
-            <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span>{req.name} {req.country_code && `(${req.country_code})`}</span>
+            <div
+              key={req.id}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 6,
+              }}
+            >
+              <span>
+                {req.name} {req.country_code && `(${req.country_code})`}
+              </span>
               <div>
-                <button onClick={() => handleRespond(req.id, req.user_id, true)}>✅ Approve</button>
-                <button onClick={() => handleRespond(req.id, req.user_id, false)} style={{ marginLeft: 6 }}>❌ Reject</button>
+                <button
+                  onClick={() => handleRespond(req.id, req.user_id, true)}
+                >
+                  ✅ Approve
+                </button>
+                <button
+                  onClick={() => handleRespond(req.id, req.user_id, false)}
+                  style={{ marginLeft: 6 }}
+                >
+                  ❌ Reject
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <div style={{ marginBottom: 16 }}>
+      {/* <div style={{ marginBottom: 16 }}>
         <h4>👥 Participants ({participants.length})</h4>
         {participants.map((p, i) => (
           <span key={i} style={{ marginRight: 8 }}>{p.name || `User ${p.user_id}`}</span>
+        ))}
+      </div> */}
+
+      <div style={{ marginBottom: 16 }}>
+        <h4>👥 Participants ({Object.keys(participants).length})</h4>
+        {Object.entries(participants).map(([userId, p]) => (
+          <span key={userId} style={{ marginRight: 8 }}>
+            {p.name || `User ${userId}`}
+          </span>
         ))}
       </div>
 
@@ -206,19 +269,23 @@ function LiveRoom() {
         <div style={{ marginBottom: 16 }}>
           <h4>✋ Hands Raised</h4>
           {handsRaised.map((h, i) => (
-            <span key={i} style={{ marginRight: 8 }}>{h.name || `User ${h.user_id}`}</span>
+            <span key={i} style={{ marginRight: 8 }}>
+              {h.name || `User ${h.user_id}`}
+            </span>
           ))}
         </div>
       )}
 
-      <div style={{ border: '1px solid #ccc', padding: 10 }}>
+      <div style={{ border: "1px solid #ccc", padding: 10 }}>
         <h4>💬 Chat</h4>
-        <div style={{ height: 150, overflowY: 'auto', marginBottom: 8 }}>
+        <div style={{ height: 150, overflowY: "auto", marginBottom: 8 }}>
           {messages.map((m, i) => (
-            <p key={i}><strong>{m.user}:</strong> {m.text}</p>
+            <p key={i}>
+              <strong>{m.user}:</strong> {m.text}
+            </p>
           ))}
         </div>
-        <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 6 }}>
+        <form onSubmit={handleSendMessage} style={{ display: "flex", gap: 6 }}>
           <input
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
