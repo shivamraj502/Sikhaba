@@ -27,10 +27,14 @@ function LiveRoom() {
   const [chatInput, setChatInput] = useState('');
   const [mySpeakerStatus, setMySpeakerStatus] = useState(null);
   const socketRef = useRef(null);
+  const hasInitialized = useRef(false);
 
   const isHost = room && user && room.host_id === user.id;
 
   useEffect(() => {
+    if (hasInitialized.current) return;   // prevents React 18 Strict Mode double-run in dev
+    hasInitialized.current = true;
+
     async function init() {
       try {
         const roomRes = await getRoomById(roomId);
@@ -63,15 +67,15 @@ function LiveRoom() {
       const socket = connectSocket(token);
       socketRef.current = socket;
 
+      socket.off("participant-joined");
+      socket.off("participant-left");
+      socket.off("hand-raised");
+      socket.off("speaker-approved");
+      socket.off("speaker-rejected");
+      socket.off("room-ended");
+      socket.off("new-message");
+      
       socket.emit('join-room', { room_id: roomId });
-
-      // socket.on('participant-joined', (data) => {
-      //   setParticipants((prev) => [...prev, data]);
-      // });
-
-      // socket.on('participant-left', (data) => {
-      //   setParticipants((prev) => prev.filter((p) => p.user_id !== data.user_id));
-      // });
 
       socket.on("participant-joined", (data) => {
         setParticipants((prev) => ({
