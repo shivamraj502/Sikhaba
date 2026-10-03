@@ -27,14 +27,11 @@ function LiveRoom() {
   const [chatInput, setChatInput] = useState('');
   const [mySpeakerStatus, setMySpeakerStatus] = useState(null);
   const socketRef = useRef(null);
-  const hasInitialized = useRef(false);
 
   const isHost = room && user && room.host_id === user.id;
 
   useEffect(() => {
-    if (hasInitialized.current) return;   // prevents React 18 Strict Mode double-run in dev
-    hasInitialized.current = true;
-
+    
     async function init() {
       try {
         const roomRes = await getRoomById(roomId);
@@ -74,7 +71,7 @@ function LiveRoom() {
       socket.off("speaker-rejected");
       socket.off("room-ended");
       socket.off("new-message");
-      
+
       socket.emit('join-room', { room_id: roomId });
 
       socket.on("participant-joined", (data) => {
@@ -252,13 +249,6 @@ function LiveRoom() {
           ))}
         </div>
       )}
-
-      {/* <div style={{ marginBottom: 16 }}>
-        <h4>👥 Participants ({participants.length})</h4>
-        {participants.map((p, i) => (
-          <span key={i} style={{ marginRight: 8 }}>{p.name || `User ${p.user_id}`}</span>
-        ))}
-      </div> */}
 
       <div style={{ marginBottom: 16 }}>
         <h4>👥 Participants ({Object.keys(participants).length})</h4>
