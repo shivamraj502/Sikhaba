@@ -1,4 +1,6 @@
 const mysql = require('mysql2/promise');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const pool = mysql.createPool({
@@ -7,12 +9,14 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
+  ssl: {
+    ca: fs.readFileSync(path.join(__dirname, 'ca.pem'))
+  },
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
 });
 
-// Quick test — logs once on server start to confirm DB is reachable
 async function testConnection() {
   try {
     const connection = await pool.getConnection();
