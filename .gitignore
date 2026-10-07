@@ -2,4 +2,5 @@ DATABASE
 FRONTEND/sikhaba/.env
 BACKEND/.env
 BACKEND/node_modules/
+BACKEND/config/ca.pem
 FRONTEND/sikhaba/node_modules/
