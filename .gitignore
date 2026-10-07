@@ -1,5 +1,5 @@
 DATABASE
-frontend/sikhaba/.env
-backend/.env
-backend/node_modules/
-frontend/sikhaba/node_modules/
+FRONTEND/sikhaba/.env
+BACKEND/.env
+BACKEND/node_modules/
+FRONTEND/sikhaba/node_modules/
