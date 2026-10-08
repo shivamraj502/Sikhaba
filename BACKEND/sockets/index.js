@@ -2,11 +2,12 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const registerRoomEvents = require('./roomEvents');
 const registerPresenceEvents = require('./presenceEvents');
-// const allowedOrigins = ['http://localhost:5173','https://sikhaba-nwhe.vercel.app'];
+const allowedOrigins = ['http://localhost:5173','https://sikhaba-nwhe.vercel.app',];
 
 function initSocket(server) {
   const io = new Server(server, {
-    cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }
+    // cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true || origin: allowedOrigins, credentials: true }
+    cors: { origin: allowedOrigins , credentials: true }
   });
 
   // Authenticate every socket connection using the same JWT from login
