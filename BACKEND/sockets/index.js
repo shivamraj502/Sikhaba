@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const registerRoomEvents = require('./roomEvents');
 const registerPresenceEvents = require('./presenceEvents');
+// const allowedOrigins = ['http://localhost:5173','https://sikhaba-nwhe.vercel.app'];
 
 function initSocket(server) {
   const io = new Server(server, {
