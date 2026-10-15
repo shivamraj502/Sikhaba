@@ -12,3 +12,4 @@ export const respondToRequest = (roomId, requestId, approve) =>
   axiosInstance.post(`/rooms/${roomId}/speak-requests/${requestId}/respond`, { approve });
 export const getChatHistory = (roomId) => axiosInstance.get(`/rooms/${roomId}/chat-history`);
 export const getActiveParticipants = (roomId) => axiosInstance.get(`/rooms/${roomId}/participants`);
+export const getLiveKitToken = (roomId) => axiosInstance.post(`/rooms/${roomId}/livekit-token`);
