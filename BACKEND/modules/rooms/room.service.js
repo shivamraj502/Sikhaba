@@ -36,27 +36,33 @@ async function getRoomById(room_id) {
   return rows[0];
 }
 
-async function joinRoom({ room_id, user_id }) {
-  const room = await getRoomById(room_id);
-  if (room.status !== 'live') throw new Error('Room is not live');
+// async function joinRoom({ room_id, user_id }) {
+//   const room = await getRoomById(room_id);
+//   if (room.status !== 'live') throw new Error('Room is not live');
 
+//   const banned = await isUserBannedFromRoom({ room_id, user_id });
+//   if (banned) throw new Error('You are banned from this room');
+
+//   // Check if already an active participant (avoid duplicate rows on rejoin)
+//   const [existing] = await pool.query(
+//     'SELECT * FROM room_participants WHERE room_id = ? AND user_id = ? AND left_at IS NULL',
+//     [room_id, user_id]
+//   );
+//   if (existing.length > 0) return existing[0];
+
+//   const [result] = await pool.query(
+//     'INSERT INTO room_participants (room_id, user_id, role) VALUES (?, ?, ?)',
+//     [room_id, user_id, 'listener']
+//   );
+
+//   const [rows] = await pool.query('SELECT * FROM room_participants WHERE id = ?', [result.insertId]);
+//   return rows[0];
+// }
+
+async function joinRoom({ room_id, user_id }) {
   const banned = await isUserBannedFromRoom({ room_id, user_id });
   if (banned) throw new Error('You are banned from this room');
-
-  // Check if already an active participant (avoid duplicate rows on rejoin)
-  const [existing] = await pool.query(
-    'SELECT * FROM room_participants WHERE room_id = ? AND user_id = ? AND left_at IS NULL',
-    [room_id, user_id]
-  );
-  if (existing.length > 0) return existing[0];
-
-  const [result] = await pool.query(
-    'INSERT INTO room_participants (room_id, user_id, role) VALUES (?, ?, ?)',
-    [room_id, user_id, 'listener']
-  );
-
-  const [rows] = await pool.query('SELECT * FROM room_participants WHERE id = ?', [result.insertId]);
-  return rows[0];
+  return ensureParticipant({ room_id, user_id });
 }
 
 async function leaveRoom({ room_id, user_id }) {
@@ -76,11 +82,13 @@ async function endRoom({ room_id, host_id }) {
     `UPDATE rooms SET status = 'ended', ended_at = NOW() WHERE id = ?`,
     [room_id]
   );
+  await closeLiveKitRoom(`room-${room_id}`);
 
   await pool.query(
     `UPDATE room_participants SET left_at = NOW() WHERE room_id = ? AND left_at IS NULL`,
     [room_id]
   );
+  await closeLiveKitRoom(`room-${room_id}`);
 
   return { message: 'Room ended' };
 }
@@ -107,7 +115,51 @@ async function getActiveParticipants(room_id) {
   return rows;
 }
 
+async function ensureParticipant({ room_id, user_id }) {
+  const room = await getRoomById(room_id);
+  if (room.status !== 'live') throw new Error('Room is not live');
 
+  const [active] = await pool.query(
+    `SELECT * FROM room_participants
+     WHERE room_id = ? AND user_id = ? AND left_at IS NULL
+     ORDER BY id DESC LIMIT 1`,
+    [room_id, user_id]
+  );
+  if (active.length > 0) return active[0];
+
+  let role = 'listener';
+  if (room.host_id === user_id) {
+    role = 'host';
+  } else {
+    const [approved] = await pool.query(
+      `SELECT id FROM speaker_requests
+       WHERE room_id = ? AND user_id = ? AND status = 'approved' LIMIT 1`,
+      [room_id, user_id]
+    );
+    if (approved.length > 0) role = 'speaker';
+  }
+
+  const [result] = await pool.query(
+    'INSERT INTO room_participants (room_id, user_id, role) VALUES (?, ?, ?)',
+    [room_id, user_id, role]
+  );
+  const [rows] = await pool.query('SELECT * FROM room_participants WHERE id = ?', [result.insertId]);
+  return rows[0];
+}
+
+async function getLiveKitToken({ room_id, user }) {
+  const participant = await joinRoom({ room_id, user_id: user.id });
+  const canPublish = ['host', 'speaker'].includes(participant.role);
+
+  const token = await createToken({
+    roomName: `room-${room_id}`,
+    identity: user.id,
+    name: user.name,
+    canPublish
+  });
+
+  return { token, url: process.env.LIVEKIT_URL, canPublish };
+}
 
 module.exports = {
   createRoom,
@@ -117,5 +169,7 @@ module.exports = {
   leaveRoom,
   endRoom,
   getChatHistory,
-  getActiveParticipants
+  getActiveParticipants,
+  ensureParticipant,
+  getLiveKitToken,
 };
