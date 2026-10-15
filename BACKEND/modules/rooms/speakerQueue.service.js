@@ -1,4 +1,5 @@
 const { pool } = require('../../config/db');
+const { promoteToSpeaker } = require('../../config/livekit');
 
 async function requestToSpeak({ room_id, user_id }) {
   // Prevent duplicate pending requests
@@ -54,6 +55,7 @@ async function respondToRequest({ request_id, host_id, approve }) {
        WHERE room_id = ? AND user_id = ? AND left_at IS NULL`,
       [request.room_id, request.user_id]
     );
+    await promoteToSpeaker(`room-${request.room_id}`, request.user_id);
   }
 
   return { message: `Request ${newStatus}` };
