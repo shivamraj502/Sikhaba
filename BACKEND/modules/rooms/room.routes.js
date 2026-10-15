@@ -17,5 +17,6 @@ router.get('/:id/speak-requests', roomController.getPendingRequests);          /
 router.post('/:id/speak-requests/:requestId/respond', roomController.respondToRequest); // host approves/rejects
 router.get('/:id/chat-history', roomController.getChatHistory);
 router.get('/:id/participants', roomController.getActiveParticipants);
+router.post('/:id/livekit-token', roomController.getLiveKitToken);
 
 module.exports = router;
