@@ -55,7 +55,7 @@ async function respondToRequest({ request_id, host_id, approve }) {
        WHERE room_id = ? AND user_id = ? AND left_at IS NULL`,
       [request.room_id, request.user_id]
     );
-    await promoteToSpeaker(`room-${request.room_id}`, request.user_id);
+    await promoteToSpeaker(`room-${request.room_id}`, request.user_id); 
   }
 
   return { message: `Request ${newStatus}` };
