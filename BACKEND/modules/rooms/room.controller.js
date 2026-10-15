@@ -106,6 +106,18 @@ async function getActiveParticipants(req, res) {
   }
 }
 
+async function getLiveKitToken(req, res) {
+  try {
+    const result = await roomService.getLiveKitToken({
+      room_id: req.params.id,
+      user: req.user
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+}
+
 module.exports = {
   createRoom,
   getLiveRooms,
@@ -117,5 +129,6 @@ module.exports = {
   requestToSpeak,
   getPendingRequests,
   respondToRequest,
-  getActiveParticipants
+  getActiveParticipants,
+  getLiveKitToken,
 };
