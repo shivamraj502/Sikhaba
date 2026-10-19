@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 require('dotenv').config();
+// const initSockets = require('./sockets');
 
 const corsMiddleware = require('./config/cors');
 const { testConnection } = require('./config/db');
