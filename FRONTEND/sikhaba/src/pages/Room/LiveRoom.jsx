@@ -30,7 +30,7 @@ function LiveRoom() {
   const [canSpeak, setCanSpeak] = useState(false);
   const [micOn, setMicOn] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
-  const [audioStatus, setAudioStatus] = useState("connecting"); // connecting | connected | failed
+  const [audioStatus, setAudioStatus] = useState('connecting'); // connecting | connected | failed
   const [activeSpeakers, setActiveSpeakers] = useState([]);
   const socketRef = useRef(null);
   const chatBottomRef = useRef(null);
@@ -38,7 +38,6 @@ function LiveRoom() {
   const isHost = room && user && room.host_id === user.id;
 
   useEffect(() => {
-    
     let cancelled = false;
     async function init() {
       let roomData;
@@ -47,8 +46,8 @@ function LiveRoom() {
         roomData = roomRes.data;
         setRoom(roomData);
       } catch (err) {
-        alert("Room not found");
-        navigate("/home");
+        alert('Room not found');
+        navigate('/home');
         return;
       }
       const amHost = roomData.host_id === user.id;
@@ -65,7 +64,7 @@ function LiveRoom() {
           const pendingRes = await getPendingRequests(roomId);
           setPendingRequests(pendingRes.data);
         } catch (err) {
-          console.error("Failed to load pending requests");
+          console.error('Failed to load pending requests');
         }
       }
 
@@ -77,31 +76,31 @@ function LiveRoom() {
         });
         setParticipants(initial);
       } catch (err) {
-        console.error("Failed to load participants");
+        console.error('Failed to load participants');
       }
 
       const token = localStorage.getItem('token');
       const socket = connectSocket(token);
       socketRef.current = socket;
 
-      socket.off("participant-joined");
-      socket.off("participant-left");
-      socket.off("hand-raised");
-      socket.off("speaker-approved");
-      socket.off("speaker-rejected");
-      socket.off("room-ended");
-      socket.off("new-message");
+      socket.off('participant-joined');
+      socket.off('participant-left');
+      socket.off('hand-raised');
+      socket.off('speaker-approved');
+      socket.off('speaker-rejected');
+      socket.off('room-ended');
+      socket.off('new-message');
 
       socket.emit('join-room', { room_id: roomId });
 
-      socket.on("participant-joined", (data) => {
+      socket.on('participant-joined', (data) => {
         setParticipants((prev) => ({
           ...prev,
           [data.user_id]: { name: data.name, country_code: data.country_code },
         }));
       });
 
-      socket.on("participant-left", (data) => {
+      socket.on('participant-left', (data) => {
         setParticipants((prev) => {
           const updated = { ...prev };
           delete updated[data.user_id];
@@ -109,7 +108,7 @@ function LiveRoom() {
         });
       });
 
-      socket.on("hand-raised", (data) => {
+      socket.on('hand-raised', (data) => {
         setHandsRaised((prev) => [...prev, data]);
 
         if (amHost) {
@@ -134,8 +133,8 @@ function LiveRoom() {
         navigate('/home');
       });
 
-      socket.on("new-message", (data) => {
-        setMessages((prev) => [...prev,{ user: data.name, text: data.message },]);
+      socket.on('new-message', (data) => {
+        setMessages((prev) => [...prev, { user: data.name, text: data.message }]);
       });
 
       if (cancelled) return;
@@ -153,10 +152,10 @@ function LiveRoom() {
           onAudioBlockedChange: setAudioBlocked,
         });
         setCanSpeak(data.canPublish);
-        setAudioStatus("connected");
+        setAudioStatus('connected');
       } catch (err) {
-        console.error("Audio connect failed:", err);
-        setAudioStatus("failed");
+        console.error('Audio connect failed:', err);
+        setAudioStatus('failed');
       }
     }
 
@@ -180,7 +179,7 @@ function LiveRoom() {
   }, [roomId]);
 
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   async function handleRaiseHand() {
@@ -223,36 +222,57 @@ function LiveRoom() {
   }
 
   function handleSendMessage(e) {
-  e.preventDefault();
-  if (!chatInput.trim()) return;
-  socketRef.current.emit('send-message', { room_id: roomId, message: chatInput });
-  setChatInput('');
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    socketRef.current.emit('send-message', { room_id: roomId, message: chatInput });
+    setChatInput('');
+  }
+
+  // (d) NEW: mic toggle
+  async function handleToggleMic() {
+    try {
+      const next = !micOn;
+      await setMic(next);
+      setMicOn(next);
+    } catch (err) {
+      alert('Could not access microphone. Check your browser permission.');
+    }
   }
 
   return (
-    <div style={{ maxWidth: 700, margin: "20px auto", padding: "0 16px" }}>
+    <div style={{ maxWidth: 700, margin: '20px auto', padding: '0 16px' }}>
       <h2>🎙️ Live Room #{roomId}</h2>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-        {!isHost && mySpeakerStatus !== "approved" && (
-          <button
-            onClick={handleRaiseHand}
-            disabled={mySpeakerStatus === "pending"}
-          >
-            {mySpeakerStatus === "pending"
-              ? "✋ Request sent..."
-              : "✋ Raise Hand to Speak"}
+      {/* (e) NEW: audio status / enable audio / mic button */}
+      <div style={{ marginBottom: 16 }}>
+        {audioStatus === 'connecting' && <span>🔄 Connecting audio...</span>}
+        {audioStatus === 'connected' && <span>🔊 Audio connected</span>}
+        {audioStatus === 'failed' && <span style={{ color: 'red' }}>❌ Audio failed to connect</span>}
+
+        {audioBlocked && (
+          <button onClick={startAudioPlayback} style={{ marginLeft: 8 }}>
+            🔊 Tap to enable audio
           </button>
         )}
-        {mySpeakerStatus === "approved" && (
-          <span>🎤 You're approved to speak!</span>
+
+        {canSpeak && audioStatus === 'connected' && (
+          <button onClick={handleToggleMic} style={{ marginLeft: 8 }}>
+            {micOn ? '🎙️ Mute' : '🔇 Unmute'}
+          </button>
         )}
-        {mySpeakerStatus === "rejected" && (
-          <span>❌ Your request was declined.</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+        {!isHost && mySpeakerStatus !== 'approved' && (
+          <button onClick={handleRaiseHand} disabled={mySpeakerStatus === 'pending'}>
+            {mySpeakerStatus === 'pending' ? '✋ Request sent...' : '✋ Raise Hand to Speak'}
+          </button>
         )}
+        {mySpeakerStatus === 'approved' && <span>🎤 You're approved to speak!</span>}
+        {mySpeakerStatus === 'rejected' && <span>❌ Your request was declined.</span>}
 
         {isHost && (
-          <button onClick={handleEndRoom} style={{ color: "red" }}>
+          <button onClick={handleEndRoom} style={{ color: 'red' }}>
             End Room
           </button>
         )}
@@ -260,28 +280,18 @@ function LiveRoom() {
       </div>
 
       {isHost && pendingRequests.length > 0 && (
-        <div
-          style={{ border: "1px solid #f0ad4e", padding: 10, marginBottom: 16 }}
-        >
+        <div style={{ border: '1px solid #f0ad4e', padding: 10, marginBottom: 16 }}>
           <h4>Speaker Requests</h4>
           {pendingRequests.map((req) => (
             <div
               key={req.id}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 6,
-              }}
+              style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}
             >
               <span>
                 {req.name} {req.country_code && `(${req.country_code})`}
               </span>
               <div>
-                <button
-                  onClick={() => handleRespond(req.id, req.user_id, true)}
-                >
-                  ✅ Approve
-                </button>
+                <button onClick={() => handleRespond(req.id, req.user_id, true)}>✅ Approve</button>
                 <button
                   onClick={() => handleRespond(req.id, req.user_id, false)}
                   style={{ marginLeft: 6 }}
@@ -296,8 +306,10 @@ function LiveRoom() {
 
       <div style={{ marginBottom: 16 }}>
         <h4>👥 Participants ({Object.keys(participants).length})</h4>
+        {/* (f) NEW: speaking indicator */}
         {Object.entries(participants).map(([userId, p]) => (
           <span key={userId} style={{ marginRight: 8 }}>
+            {activeSpeakers.includes(String(userId)) && '🟢 '}
             {p.name || `User ${userId}`}
           </span>
         ))}
@@ -314,9 +326,9 @@ function LiveRoom() {
         </div>
       )}
 
-      <div style={{ border: "1px solid #ccc", padding: 10 }}>
+      <div style={{ border: '1px solid #ccc', padding: 10 }}>
         <h4>💬 Chat</h4>
-        <div style={{ height: 150, overflowY: "auto", marginBottom: 8 }}>
+        <div style={{ height: 150, overflowY: 'auto', marginBottom: 8 }}>
           {messages.map((m, i) => (
             <p key={i}>
               <strong>{m.user}:</strong> {m.text}
@@ -324,7 +336,7 @@ function LiveRoom() {
           ))}
           <div ref={chatBottomRef} />
         </div>
-        <form onSubmit={handleSendMessage} style={{ display: "flex", gap: 6 }}>
+        <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 6 }}>
           <input
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
