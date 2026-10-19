@@ -36,29 +36,6 @@ async function getRoomById(room_id) {
   return rows[0];
 }
 
-// async function joinRoom({ room_id, user_id }) {
-//   const room = await getRoomById(room_id);
-//   if (room.status !== 'live') throw new Error('Room is not live');
-
-//   const banned = await isUserBannedFromRoom({ room_id, user_id });
-//   if (banned) throw new Error('You are banned from this room');
-
-//   // Check if already an active participant (avoid duplicate rows on rejoin)
-//   const [existing] = await pool.query(
-//     'SELECT * FROM room_participants WHERE room_id = ? AND user_id = ? AND left_at IS NULL',
-//     [room_id, user_id]
-//   );
-//   if (existing.length > 0) return existing[0];
-
-//   const [result] = await pool.query(
-//     'INSERT INTO room_participants (room_id, user_id, role) VALUES (?, ?, ?)',
-//     [room_id, user_id, 'listener']
-//   );
-
-//   const [rows] = await pool.query('SELECT * FROM room_participants WHERE id = ?', [result.insertId]);
-//   return rows[0];
-// }
-
 async function joinRoom({ room_id, user_id }) {
   const banned = await isUserBannedFromRoom({ room_id, user_id });
   if (banned) throw new Error('You are banned from this room');
@@ -82,7 +59,6 @@ async function endRoom({ room_id, host_id }) {
     `UPDATE rooms SET status = 'ended', ended_at = NOW() WHERE id = ?`,
     [room_id]
   );
-  await closeLiveKitRoom(`room-${room_id}`);
 
   await pool.query(
     `UPDATE room_participants SET left_at = NOW() WHERE room_id = ? AND left_at IS NULL`,
