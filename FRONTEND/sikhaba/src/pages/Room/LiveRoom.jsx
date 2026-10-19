@@ -10,9 +10,9 @@ import {
   endRoom,
   leaveRoom,
   getChatHistory,
-  getActiveParticipants
+  getActiveParticipants,
+  getLiveKitToken,
 } from '../../api/roomApi';
-import { getLiveKitToken } from '../../api/roomApi';
 import { connectAudio, setMic, startAudioPlayback, disconnectAudio } from '../../webrtc/liveKitClient';
 
 function LiveRoom() {
@@ -21,8 +21,7 @@ function LiveRoom() {
   const navigate = useNavigate();
 
   const [room, setRoom] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  // const { [user.id]: { name, country_code } } = user || {};
+  const [participants, setParticipants] = useState({});
   const [handsRaised, setHandsRaised] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -34,6 +33,7 @@ function LiveRoom() {
   const [audioStatus, setAudioStatus] = useState("connecting"); // connecting | connected | failed
   const [activeSpeakers, setActiveSpeakers] = useState([]);
   const socketRef = useRef(null);
+  const chatBottomRef = useRef(null);
 
   const isHost = room && user && room.host_id === user.id;
 
@@ -179,6 +179,10 @@ function LiveRoom() {
     };
   }, [roomId]);
 
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   async function handleRaiseHand() {
     try {
       await requestToSpeak(roomId);
@@ -318,6 +322,7 @@ function LiveRoom() {
               <strong>{m.user}:</strong> {m.text}
             </p>
           ))}
+          <div ref={chatBottomRef} />
         </div>
         <form onSubmit={handleSendMessage} style={{ display: "flex", gap: 6 }}>
           <input
