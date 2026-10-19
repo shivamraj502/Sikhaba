@@ -12,6 +12,8 @@ import {
   getChatHistory,
   getActiveParticipants
 } from '../../api/roomApi';
+import { getLiveKitToken } from '../../api/roomApi';
+import { connectAudio, setMic, startAudioPlayback, disconnectAudio } from '../../webrtc/liveKitClient';
 
 function LiveRoom() {
   const { roomId } = useParams();
@@ -26,21 +28,19 @@ function LiveRoom() {
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [mySpeakerStatus, setMySpeakerStatus] = useState(null);
+  const [canSpeak, setCanSpeak] = useState(false);
+  const [micOn, setMicOn] = useState(false);
+  const [audioBlocked, setAudioBlocked] = useState(false);
+  const [audioStatus, setAudioStatus] = useState("connecting"); // connecting | connected | failed
+  const [activeSpeakers, setActiveSpeakers] = useState([]);
   const socketRef = useRef(null);
 
   const isHost = room && user && room.host_id === user.id;
 
   useEffect(() => {
     
+    let cancelled = false;
     async function init() {
-      // try {
-      //   const roomRes = await getRoomById(roomId);
-      //   setRoom(roomRes.data);
-      // } catch (err) {
-      //   alert('Room not found');
-      //   navigate('/home');
-      //   return;
-      // }
       let roomData;
       try {
         const roomRes = await getRoomById(roomId);
@@ -137,12 +137,35 @@ function LiveRoom() {
       socket.on("new-message", (data) => {
         setMessages((prev) => [...prev,{ user: data.name, text: data.message },]);
       });
+
+      if (cancelled) return;
+      try {
+        const { data } = await getLiveKitToken(roomId);
+        if (cancelled) return;
+        await connectAudio({
+          url: data.url,
+          token: data.token,
+          onPermissionChange: (allowed) => {
+            setCanSpeak(allowed);
+            if (!allowed) setMicOn(false);
+          },
+          onSpeakersChange: setActiveSpeakers,
+          onAudioBlockedChange: setAudioBlocked,
+        });
+        setCanSpeak(data.canPublish);
+        setAudioStatus("connected");
+      } catch (err) {
+        console.error("Audio connect failed:", err);
+        setAudioStatus("failed");
+      }
     }
 
     init();
 
     return () => {
       const socket = socketRef.current;
+      cancelled = true;
+      disconnectAudio();
       if (socket) {
         socket.emit('leave-room', { room_id: roomId });
         socket.off('participant-joined');
