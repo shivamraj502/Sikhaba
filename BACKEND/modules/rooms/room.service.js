@@ -48,6 +48,14 @@ async function leaveRoom({ room_id, user_id }) {
      WHERE room_id = ? AND user_id = ? AND left_at IS NULL`,
     [room_id, user_id]
   );
+
+  // Approval ends when the user clicks Leave
+  await pool.query(
+    `UPDATE speaker_requests SET status = 'revoked', responded_at = NOW()
+     WHERE room_id = ? AND user_id = ? AND status = 'approved'`,
+    [room_id, user_id]
+  );
+  
   return { message: 'Left room' };
 }
 
