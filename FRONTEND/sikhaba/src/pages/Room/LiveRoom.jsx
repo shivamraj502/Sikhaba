@@ -12,6 +12,8 @@ import {
   getChatHistory,
   getActiveParticipants,
   getLiveKitToken,
+  joinRoom,
+  removeSpeaker,
 } from '../../api/roomApi';
 import { connectAudio, setMic, startAudioPlayback, disconnectAudio } from '../../webrtc/liveKitClient';
 
@@ -35,22 +37,32 @@ function LiveRoom() {
   const socketRef = useRef(null);
   const chatBottomRef = useRef(null);
 
-  const isHost = room && user && room.host_id === user.id;
+  const isHost = room && user && Number(room.host_id) === Number(user.id);
 
   useEffect(() => {
     let cancelled = false;
     async function init() {
+      
       let roomData;
       try {
         const roomRes = await getRoomById(roomId);
         roomData = roomRes.data;
         setRoom(roomData);
       } catch (err) {
-        alert('Room not found');
-        navigate('/home');
+        alert("Room not found");
+        navigate("/home");
         return;
       }
-      const amHost = roomData.host_id === user.id;
+
+      try {
+        await joinRoom(roomId);
+      } catch (err) {
+        alert(err.response?.data?.message || "Unable to join room");
+        navigate("/home");
+        return;
+      }
+
+      const amHost = Number(roomData.host_id) === Number(user.id);
 
       try {
         const historyRes = await getChatHistory(roomId);
@@ -68,16 +80,7 @@ function LiveRoom() {
         }
       }
 
-      try {
-        const participantsRes = await getActiveParticipants(roomId);
-        const initial = {};
-        participantsRes.data.forEach((p) => {
-          initial[p.user_id] = { name: p.name, country_code: p.country_code };
-        });
-        setParticipants(initial);
-      } catch (err) {
-        console.error('Failed to load participants');
-      }
+      await loadParticipants();
 
       const token = localStorage.getItem('token');
       const socket = connectSocket(token);
@@ -90,15 +93,11 @@ function LiveRoom() {
       socket.off('speaker-rejected');
       socket.off('room-ended');
       socket.off('new-message');
+      socket.off('speaker-removed');  
 
       socket.emit('join-room', { room_id: roomId });
 
-      socket.on('participant-joined', (data) => {
-        setParticipants((prev) => ({
-          ...prev,
-          [data.user_id]: { name: data.name, country_code: data.country_code },
-        }));
-      });
+      socket.on('participant-joined', () => { loadParticipants(); });   
 
       socket.on('participant-left', (data) => {
         setParticipants((prev) => {
@@ -118,9 +117,12 @@ function LiveRoom() {
         }
       });
 
-      socket.on('speaker-approved', (data) => {
-        if (data.user_id === user.id) setMySpeakerStatus('approved');
-        setHandsRaised((prev) => prev.filter((h) => h.user_id !== data.user_id));
+      socket.on("speaker-approved", (data) => {
+        if (data.user_id === user.id) setMySpeakerStatus("approved");
+        setHandsRaised((prev) =>
+          prev.filter((h) => h.user_id !== data.user_id),
+        );
+        loadParticipants();
       });
 
       socket.on('speaker-rejected', (data) => {
@@ -135,6 +137,15 @@ function LiveRoom() {
 
       socket.on('new-message', (data) => {
         setMessages((prev) => [...prev, { user: data.name, text: data.message }]);
+      });
+
+      socket.on("speaker-removed", (data) => {
+        if (data.user_id === user.id) {
+          setMySpeakerStatus(null); // brings the Raise Hand button back
+          setCanSpeak(false);
+          setMicOn(false);
+        }
+        loadParticipants();
       });
 
       if (cancelled) return;
@@ -174,6 +185,7 @@ function LiveRoom() {
         socket.off('speaker-rejected');
         socket.off('room-ended');
         socket.off('new-message');
+        socket.off('speaker-removed');
       }
     };
   }, [roomId]);
@@ -239,15 +251,42 @@ function LiveRoom() {
     }
   }
 
+  async function loadParticipants() {
+  try {
+    const res = await getActiveParticipants(roomId);
+    const map = {};
+    res.data.forEach((p) => {
+      map[p.user_id] = { name: p.name, country_code: p.country_code, role: p.role };
+    });
+    setParticipants(map);
+  } catch (err) {
+    console.error('Failed to load participants');
+  }
+  }
+
+  async function handleRemoveSpeaker(targetUserId) {
+    try {
+      await removeSpeaker(roomId, targetUserId);
+      socketRef.current.emit("remove-speaker", {
+        room_id: roomId,
+        target_user_id: targetUserId,
+      });
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to remove speaker");
+    }
+  }
+
   return (
-    <div style={{ maxWidth: 700, margin: '20px auto', padding: '0 16px' }}>
+    <div style={{ maxWidth: 700, margin: "20px auto", padding: "0 16px" }}>
       <h2>🎙️ Live Room #{roomId}</h2>
 
       {/* (e) NEW: audio status / enable audio / mic button */}
       <div style={{ marginBottom: 16 }}>
-        {audioStatus === 'connecting' && <span>🔄 Connecting audio...</span>}
-        {audioStatus === 'connected' && <span>🔊 Audio connected</span>}
-        {audioStatus === 'failed' && <span style={{ color: 'red' }}>❌ Audio failed to connect</span>}
+        {audioStatus === "connecting" && <span>🔄 Connecting audio...</span>}
+        {audioStatus === "connected" && <span>🔊 Audio connected</span>}
+        {audioStatus === "failed" && (
+          <span style={{ color: "red" }}>❌ Audio failed to connect</span>
+        )}
 
         {audioBlocked && (
           <button onClick={startAudioPlayback} style={{ marginLeft: 8 }}>
@@ -255,24 +294,33 @@ function LiveRoom() {
           </button>
         )}
 
-        {canSpeak && audioStatus === 'connected' && (
+        {canSpeak && audioStatus === "connected" && (
           <button onClick={handleToggleMic} style={{ marginLeft: 8 }}>
-            {micOn ? '🎙️ Mute' : '🔇 Unmute'}
+            {micOn ? "🎙️ Mute" : "🔇 Unmute"}
           </button>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-        {!isHost && mySpeakerStatus !== 'approved' && (
-          <button onClick={handleRaiseHand} disabled={mySpeakerStatus === 'pending'}>
-            {mySpeakerStatus === 'pending' ? '✋ Request sent...' : '✋ Raise Hand to Speak'}
+      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        {!isHost && mySpeakerStatus !== "approved" && (
+          <button
+            onClick={handleRaiseHand}
+            disabled={mySpeakerStatus === "pending"}
+          >
+            {mySpeakerStatus === "pending"
+              ? "✋ Request sent..."
+              : "✋ Raise Hand to Speak"}
           </button>
         )}
-        {mySpeakerStatus === 'approved' && <span>🎤 You're approved to speak!</span>}
-        {mySpeakerStatus === 'rejected' && <span>❌ Your request was declined.</span>}
+        {mySpeakerStatus === "approved" && (
+          <span>🎤 You're approved to speak!</span>
+        )}
+        {mySpeakerStatus === "rejected" && (
+          <span>❌ Your request was declined.</span>
+        )}
 
         {isHost && (
-          <button onClick={handleEndRoom} style={{ color: 'red' }}>
+          <button onClick={handleEndRoom} style={{ color: "red" }}>
             End Room
           </button>
         )}
@@ -280,18 +328,28 @@ function LiveRoom() {
       </div>
 
       {isHost && pendingRequests.length > 0 && (
-        <div style={{ border: '1px solid #f0ad4e', padding: 10, marginBottom: 16 }}>
+        <div
+          style={{ border: "1px solid #f0ad4e", padding: 10, marginBottom: 16 }}
+        >
           <h4>Speaker Requests</h4>
           {pendingRequests.map((req) => (
             <div
               key={req.id}
-              style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 6,
+              }}
             >
               <span>
                 {req.name} {req.country_code && `(${req.country_code})`}
               </span>
               <div>
-                <button onClick={() => handleRespond(req.id, req.user_id, true)}>✅ Approve</button>
+                <button
+                  onClick={() => handleRespond(req.id, req.user_id, true)}
+                >
+                  ✅ Approve
+                </button>
                 <button
                   onClick={() => handleRespond(req.id, req.user_id, false)}
                   style={{ marginLeft: 6 }}
@@ -306,12 +364,23 @@ function LiveRoom() {
 
       <div style={{ marginBottom: 16 }}>
         <h4>👥 Participants ({Object.keys(participants).length})</h4>
-        {/* (f) NEW: speaking indicator */}
+
         {Object.entries(participants).map(([userId, p]) => (
-          <span key={userId} style={{ marginRight: 8 }}>
-            {activeSpeakers.includes(String(userId)) && '🟢 '}
+          <div key={userId} style={{ marginBottom: 4 }}>
+            {activeSpeakers.includes(String(userId)) && "🟢 "}
             {p.name || `User ${userId}`}
-          </span>
+            {p.role === "host" && " 👑"}
+            {p.role === "speaker" && " 🎤"}
+
+            {isHost && p.role === "speaker" && (
+              <button
+                onClick={() => handleRemoveSpeaker(userId)}
+                style={{ marginLeft: 8 }}
+              >
+                🔇 Remove speaker
+              </button>
+            )}
+          </div>
         ))}
       </div>
 
@@ -326,9 +395,9 @@ function LiveRoom() {
         </div>
       )}
 
-      <div style={{ border: '1px solid #ccc', padding: 10 }}>
+      <div style={{ border: "1px solid #ccc", padding: 10 }}>
         <h4>💬 Chat</h4>
-        <div style={{ height: 150, overflowY: 'auto', marginBottom: 8 }}>
+        <div style={{ height: 150, overflowY: "auto", marginBottom: 8 }}>
           {messages.map((m, i) => (
             <p key={i}>
               <strong>{m.user}:</strong> {m.text}
@@ -336,7 +405,7 @@ function LiveRoom() {
           ))}
           <div ref={chatBottomRef} />
         </div>
-        <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 6 }}>
+        <form onSubmit={handleSendMessage} style={{ display: "flex", gap: 6 }}>
           <input
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
