@@ -1,5 +1,4 @@
 const { pool } = require('../../config/db');
-const { promoteToSpeaker } = require('../../config/livekit');
 const { promoteToSpeaker, demoteToListener } = require('../../config/livekit');
 
 async function requestToSpeak({ room_id, user_id }) {
