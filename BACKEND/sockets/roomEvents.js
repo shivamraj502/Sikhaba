@@ -56,6 +56,10 @@ function registerRoomEvents(io, socket) {
     });
   });
 
+  socket.on('remove-speaker', ({ room_id, target_user_id }) => {
+  io.to(`room-${room_id}`).emit('speaker-removed', { user_id: target_user_id });
+  });
+
   socket.on('mic-toggle', ({ room_id, is_muted }) => {
     socket.to(`room-${room_id}`).emit('mic-status-changed', {
       user_id: socket.user.id,
