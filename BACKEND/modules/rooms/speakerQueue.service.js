@@ -1,5 +1,6 @@
 const { pool } = require('../../config/db');
 const { promoteToSpeaker } = require('../../config/livekit');
+const { promoteToSpeaker, demoteToListener } = require('../../config/livekit');
 
 async function requestToSpeak({ room_id, user_id }) {
   // Prevent duplicate pending requests
@@ -61,8 +62,31 @@ async function respondToRequest({ request_id, host_id, approve }) {
   return { message: `Request ${newStatus}` };
 }
 
+async function removeSpeaker({ room_id, target_user_id, host_id }) {
+  const [roomRows] = await pool.query('SELECT host_id FROM rooms WHERE id = ?', [room_id]);
+  if (roomRows.length === 0) throw new Error('Room not found');
+  if (roomRows[0].host_id !== host_id) throw new Error('Only the host can remove speakers');
+
+  const [result] = await pool.query(
+    `UPDATE room_participants SET role = 'listener'
+     WHERE room_id = ? AND user_id = ? AND role = 'speaker' AND left_at IS NULL`,
+    [room_id, target_user_id]
+  );
+  if (result.affectedRows === 0) throw new Error('User is not a speaker in this room');
+
+  await pool.query(
+    `UPDATE speaker_requests SET status = 'revoked', responded_at = NOW()
+     WHERE room_id = ? AND user_id = ? AND status = 'approved'`,
+    [room_id, target_user_id]
+  );
+
+  await demoteToListener(`room-${room_id}`, target_user_id);
+  return { message: 'Speaker removed' };
+}
+
 module.exports = {
   requestToSpeak,
   getPendingRequests,
-  respondToRequest
+  respondToRequest,
+  removeSpeaker,
 };
