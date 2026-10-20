@@ -30,7 +30,11 @@ export async function connectAudio({
     })
     .on(RoomEvent.ParticipantPermissionsChanged, (_prev, participant) => {
       if (participant.identity === current.localParticipant.identity) {
-        onPermissionChange?.(!!participant.permissions?.canPublish);
+        const allowed = !!participant.permissions?.canPublish;
+        if (!allowed) {
+          current.localParticipant.setMicrophoneEnabled(false).catch(() => { });
+        }
+        onPermissionChange?.(allowed);
       }
     })
     .on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
