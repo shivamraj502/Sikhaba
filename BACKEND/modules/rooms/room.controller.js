@@ -118,6 +118,19 @@ async function getLiveKitToken(req, res) {
   }
 }
 
+async function removeSpeaker(req, res) {
+  try {
+    const result = await speakerQueueService.removeSpeaker({
+      room_id: req.params.id,
+      target_user_id: req.params.userId,
+      host_id: req.user.id
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+}
+
 module.exports = {
   createRoom,
   getLiveRooms,
@@ -131,4 +144,5 @@ module.exports = {
   respondToRequest,
   getActiveParticipants,
   getLiveKitToken,
+  removeSpeaker,
 };
