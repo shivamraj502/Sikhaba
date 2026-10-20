@@ -44,4 +44,16 @@ async function closeLiveKitRoom(roomName) {
   }
 }
 
-module.exports = { createToken, promoteToSpeaker, closeLiveKitRoom };
+async function demoteToListener(roomName, identity) {
+  try {
+    await roomService.updateParticipant(roomName, String(identity), undefined, {
+      canPublish: false,
+      canSubscribe: true,
+      canPublishData: true
+    });
+  } catch (err) {
+    console.error('LiveKit demote failed:', err.message);
+  }
+}
+
+module.exports = { createToken, promoteToSpeaker, closeLiveKitRoom, demoteToListener };
