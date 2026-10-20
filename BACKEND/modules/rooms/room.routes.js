@@ -18,5 +18,6 @@ router.post('/:id/speak-requests/:requestId/respond', roomController.respondToRe
 router.get('/:id/chat-history', roomController.getChatHistory);
 router.get('/:id/participants', roomController.getActiveParticipants);
 router.post('/:id/livekit-token', roomController.getLiveKitToken);
+router.post('/:id/speakers/:userId/remove', roomController.removeSpeaker);
 
 module.exports = router;
