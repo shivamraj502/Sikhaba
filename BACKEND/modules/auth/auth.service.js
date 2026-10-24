@@ -52,59 +52,79 @@ async function loginWithEmail({ email, password }) {
   return { user, token };
 }
 
-// // ---------- PHONE OTP ----------
+// ---------- PHONE OTP ----------
 
-// function generateOtp() {
-//   return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
-// }
+async function createAndSendOtp(phone) {
+  const [recent] = await pool.query(
+    `SELECT id FROM otp_verifications
+     WHERE phone = ? AND created_at > (NOW() - INTERVAL 60 SECOND) LIMIT 1`,
+    [phone]
+  );
+  if (recent.length > 0) throw new Error('Please wait a minute before requesting another OTP');
 
-// async function sendOtp(phone) {
-//   const otp_code = generateOtp();
-//   const expires_at = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+  const otp_code = String(crypto.randomInt(100000, 1000000));
+  const [ins] = await pool.query(
+    `INSERT INTO otp_verifications (phone, otp_code, expires_at)
+     VALUES (?, ?, NOW() + INTERVAL 5 MINUTE)`,
+    [phone, otp_code]
+  );
 
-//   await pool.query(
-//     'INSERT INTO otp_verifications (phone, otp_code, expires_at) VALUES (?, ?, ?)',
-//     [phone, otp_code, expires_at]
-//   );
+  try {
+    await sendSms(phone, `Your Sikhaba verification code is ${otp_code}. It expires in 5 minutes.`);
+  } catch (err) {
+    await pool.query('DELETE FROM otp_verifications WHERE id = ?', [ins.insertId]);
+    throw new Error('Could not send OTP. Please try again.');
+  }
+}
 
-//   // TODO: integrate real SMS provider (MSG91 / Twilio) here.
-//   // For now, we log it so you can test locally.
-//   console.log(`📱 OTP for ${phone}: ${otp_code}`);
+async function consumeOtp(phone, otp_code) {
+  const [rows] = await pool.query(
+    `SELECT id FROM otp_verifications
+     WHERE phone = ? AND otp_code = ? AND verified = FALSE AND expires_at > NOW()
+     ORDER BY id DESC LIMIT 1`,
+    [phone, String(otp_code || '')]
+  );
+  if (rows.length === 0) throw new Error('Invalid or expired OTP');
 
-//   return { message: 'OTP sent' };
-// }
+  // Atomic: a code can only be used once, even with parallel requests
+  const [upd] = await pool.query(
+    'UPDATE otp_verifications SET verified = TRUE WHERE id = ? AND verified = FALSE',
+    [rows[0].id]
+  );
+  if (upd.affectedRows === 0) throw new Error('Invalid or expired OTP');
+}
 
-// async function verifyOtpAndLogin({ phone, otp_code, name, country_code }) {
-//   const [rows] = await pool.query(
-//     `SELECT * FROM otp_verifications 
-//      WHERE phone = ? AND otp_code = ? AND verified = FALSE AND expires_at > NOW()
-//      ORDER BY id DESC LIMIT 1`,
-//     [phone, otp_code]
-//   );
+// Login / signup with phone
+async function sendOtp(rawPhone) {
+  const phone = normalizePhone(rawPhone);
+  await createAndSendOtp(phone);
+  return { message: 'OTP sent' };
+}
 
-//   if (rows.length === 0) throw new Error('Invalid or expired OTP');
+async function verifyOtpAndLogin({ phone: rawPhone, otp_code, name, country_code }) {
+  const phone = normalizePhone(rawPhone);
+  await consumeOtp(phone, otp_code);
 
-//   await pool.query('UPDATE otp_verifications SET verified = TRUE WHERE id = ?', [rows[0].id]);
+  const [userRows] = await pool.query('SELECT * FROM users WHERE phone = ?', [phone]);
+  let user;
 
-//   // Find or create user
-//   let [userRows] = await pool.query('SELECT * FROM users WHERE phone = ?', [phone]);
-//   let user;
+  if (userRows.length === 0) {
+    const [result] = await pool.query(
+      'INSERT INTO users (name, phone, country_code) VALUES (?, ?, ?)',
+      [(name || '').trim() || 'User', phone, country_code || null]
+    );
+    const [rows] = await pool.query(
+      'SELECT id, name, email, phone, country_code, role FROM users WHERE id = ?',
+      [result.insertId]
+    );
+    user = rows[0];
+  } else {
+    user = userRows[0];
+    delete user.password_hash;
+  }
 
-//   if (userRows.length === 0) {
-//     const [result] = await pool.query(
-//       'INSERT INTO users (name, phone, country_code) VALUES (?, ?, ?)',
-//       [name || 'User', phone, country_code || null]
-//     );
-//     const [newUserRows] = await pool.query('SELECT id, name, phone, country_code, role FROM users WHERE id = ?', [result.insertId]);
-//     user = newUserRows[0];
-//   } else {
-//     user = userRows[0];
-//     delete user.password_hash;
-//   }
-
-//   const token = generateToken(user);
-//   return { user, token };
-// }
+  return { user, token: generateToken(user) };
+}
 
 async function getProfile(user_id) {
   const [rows] = await pool.query(
@@ -149,8 +169,10 @@ async function verifyPhoneChange(user_id, { phone: rawPhone, otp_code }) {
 module.exports = {
   signupWithEmail,
   loginWithEmail,
-  // sendOtp,
-  // verifyOtpAndLogin,
+  createAndSendOtp,
+  consumeOtp,
+  sendOtp,
+  verifyOtpAndLogin,
   getProfile,
   updateProfile,
   sendPhoneChangeOtp,
