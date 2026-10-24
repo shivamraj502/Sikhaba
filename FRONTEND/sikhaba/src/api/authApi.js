@@ -6,3 +6,5 @@ export const sendOtp = (phone) => axiosInstance.post('/auth/otp/send', { phone }
 export const verifyOtp = (data) => axiosInstance.post('/auth/otp/verify', data);
 export const getMyProfile = () => axiosInstance.get('/auth/me');
 export const updateProfile = (data) => axiosInstance.put('/auth/me', data);
+export const sendPhoneOtp = (phone) => axiosInstance.post('/auth/phone/send-otp', { phone });
+export const verifyPhone = (data) => axiosInstance.post('/auth/phone/verify', data);
