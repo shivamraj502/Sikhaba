@@ -77,7 +77,7 @@ module.exports = {
   login, 
   sendOtp, 
   verifyOtp, 
-  getProfile, 
+  getProfile,
   updateProfile,
   sendPhoneOtp,
   verifyPhone
