@@ -56,11 +56,29 @@ async function updateProfile(req, res) {
   }
 }
 
+async function sendPhoneOtp(req, res) {
+  try {
+    res.json(await authService.sendPhoneChangeOtp(req.user.id, req.body.phone));
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+}
+
+async function verifyPhone(req, res) {
+  try {
+    res.json(await authService.verifyPhoneChange(req.user.id, req.body));
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+}
+
 module.exports = {  
   signup, 
   login, 
   sendOtp, 
   verifyOtp, 
   getProfile, 
-  updateProfile 
+  updateProfile,
+  sendPhoneOtp,
+  verifyPhone
 };
