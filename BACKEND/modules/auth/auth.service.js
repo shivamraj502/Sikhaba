@@ -1,3 +1,6 @@
+const crypto = require('crypto');
+const { normalizePhone } = require('../../utils/phone');
+const { sendSms } = require('../../utils/sms');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../../config/db');
@@ -49,59 +52,59 @@ async function loginWithEmail({ email, password }) {
   return { user, token };
 }
 
-// ---------- PHONE OTP ----------
+// // ---------- PHONE OTP ----------
 
-function generateOtp() {
-  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
-}
+// function generateOtp() {
+//   return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
+// }
 
-async function sendOtp(phone) {
-  const otp_code = generateOtp();
-  const expires_at = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+// async function sendOtp(phone) {
+//   const otp_code = generateOtp();
+//   const expires_at = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
 
-  await pool.query(
-    'INSERT INTO otp_verifications (phone, otp_code, expires_at) VALUES (?, ?, ?)',
-    [phone, otp_code, expires_at]
-  );
+//   await pool.query(
+//     'INSERT INTO otp_verifications (phone, otp_code, expires_at) VALUES (?, ?, ?)',
+//     [phone, otp_code, expires_at]
+//   );
 
-  // TODO: integrate real SMS provider (MSG91 / Twilio) here.
-  // For now, we log it so you can test locally.
-  console.log(`📱 OTP for ${phone}: ${otp_code}`);
+//   // TODO: integrate real SMS provider (MSG91 / Twilio) here.
+//   // For now, we log it so you can test locally.
+//   console.log(`📱 OTP for ${phone}: ${otp_code}`);
 
-  return { message: 'OTP sent' };
-}
+//   return { message: 'OTP sent' };
+// }
 
-async function verifyOtpAndLogin({ phone, otp_code, name, country_code }) {
-  const [rows] = await pool.query(
-    `SELECT * FROM otp_verifications 
-     WHERE phone = ? AND otp_code = ? AND verified = FALSE AND expires_at > NOW()
-     ORDER BY id DESC LIMIT 1`,
-    [phone, otp_code]
-  );
+// async function verifyOtpAndLogin({ phone, otp_code, name, country_code }) {
+//   const [rows] = await pool.query(
+//     `SELECT * FROM otp_verifications 
+//      WHERE phone = ? AND otp_code = ? AND verified = FALSE AND expires_at > NOW()
+//      ORDER BY id DESC LIMIT 1`,
+//     [phone, otp_code]
+//   );
 
-  if (rows.length === 0) throw new Error('Invalid or expired OTP');
+//   if (rows.length === 0) throw new Error('Invalid or expired OTP');
 
-  await pool.query('UPDATE otp_verifications SET verified = TRUE WHERE id = ?', [rows[0].id]);
+//   await pool.query('UPDATE otp_verifications SET verified = TRUE WHERE id = ?', [rows[0].id]);
 
-  // Find or create user
-  let [userRows] = await pool.query('SELECT * FROM users WHERE phone = ?', [phone]);
-  let user;
+//   // Find or create user
+//   let [userRows] = await pool.query('SELECT * FROM users WHERE phone = ?', [phone]);
+//   let user;
 
-  if (userRows.length === 0) {
-    const [result] = await pool.query(
-      'INSERT INTO users (name, phone, country_code) VALUES (?, ?, ?)',
-      [name || 'User', phone, country_code || null]
-    );
-    const [newUserRows] = await pool.query('SELECT id, name, phone, country_code, role FROM users WHERE id = ?', [result.insertId]);
-    user = newUserRows[0];
-  } else {
-    user = userRows[0];
-    delete user.password_hash;
-  }
+//   if (userRows.length === 0) {
+//     const [result] = await pool.query(
+//       'INSERT INTO users (name, phone, country_code) VALUES (?, ?, ?)',
+//       [name || 'User', phone, country_code || null]
+//     );
+//     const [newUserRows] = await pool.query('SELECT id, name, phone, country_code, role FROM users WHERE id = ?', [result.insertId]);
+//     user = newUserRows[0];
+//   } else {
+//     user = userRows[0];
+//     delete user.password_hash;
+//   }
 
-  const token = generateToken(user);
-  return { user, token };
-}
+//   const token = generateToken(user);
+//   return { user, token };
+// }
 
 async function getProfile(user_id) {
   const [rows] = await pool.query(
@@ -120,11 +123,36 @@ async function updateProfile(user_id, { name, country_code, avatar_url }) {
   return getProfile(user_id);
 }
 
+// change phone from Profile (logged-in user)
+async function sendPhoneChangeOtp(user_id, rawPhone) {
+  const phone = normalizePhone(rawPhone);
+  const [taken] = await pool.query('SELECT id FROM users WHERE phone = ? AND id <> ?', [phone, user_id]);
+  if (taken.length > 0) throw new Error('This number is already linked to another account');
+
+  await createAndSendOtp(phone);
+  return { message: 'OTP sent' };
+}
+
+async function verifyPhoneChange(user_id, { phone: rawPhone, otp_code }) {
+  const phone = normalizePhone(rawPhone);
+  await consumeOtp(phone, otp_code);
+
+  try {
+    await pool.query('UPDATE users SET phone = ? WHERE id = ?', [phone, user_id]);
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') throw new Error('This number is already linked to another account');
+    throw err;
+  }
+  return getProfile(user_id);
+}
+
 module.exports = {
   signupWithEmail,
   loginWithEmail,
-  sendOtp,
-  verifyOtpAndLogin,
+  // sendOtp,
+  // verifyOtpAndLogin,
   getProfile,
-  updateProfile
+  updateProfile,
+  sendPhoneChangeOtp,
+  verifyPhoneChange
 };
