@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getMyProfile, updateProfile } from '../../api/authApi';
 import { getMySubscription } from '../../api/subscriptionApi';
 import { useAuth } from '../../context/AuthContext';
+import PhoneSection from './PhoneSection';
 
 function UserProfile() {
   const [profile, setProfile] = useState(null);
@@ -68,7 +69,7 @@ function UserProfile() {
         <div style={{ border: '1px solid #ccc', padding: 16, borderRadius: 6 }}>
           <p><strong>Name:</strong> {profile.name}</p>
           <p><strong>Email:</strong> {profile.email || 'Not set'}</p>
-          <p><strong>Phone:</strong> {profile.phone || 'Not set'}</p>
+          <PhoneSection phone={profile.phone} onUpdated={setProfile} />
           <p><strong>Country:</strong> {profile.country_code || 'Not set'}</p>
           <p><strong>Role:</strong> {profile.role}</p>
           <button onClick={() => setEditing(true)}>Edit Profile</button>
