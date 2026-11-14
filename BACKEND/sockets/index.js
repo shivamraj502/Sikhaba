@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const registerRoomEvents = require('./roomEvents');
 const registerPresenceEvents = require('./presenceEvents');
 const allowedOrigins = ['http://localhost:5173','https://sikhaba-nwhe.vercel.app',];
+const { initUsageTracker } = require('./usageTracker');
 
 function initSocket(server) {
   const io = new Server(server, {
@@ -25,6 +26,7 @@ function initSocket(server) {
   });
 
   io.on('connection', (socket) => {
+    socket.join(`user-${socket.user.id}`); // personal channel for usage updates and limit alerts
     console.log(`🔌 Socket connected: ${socket.user.id}`);
 
     registerRoomEvents(io, socket);
@@ -35,6 +37,7 @@ function initSocket(server) {
     });
   });
 
+  initUsageTracker(io);
   return io;
 }
 
