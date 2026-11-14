@@ -1,10 +1,16 @@
 const paymentService = require('./payment.service');
 const usageTimerService = require('./usageTimer.service');
 
+async function getPlans(req, res) {
+  res.json(paymentService.getPlans());
+}
+
 async function createOrder(req, res) {
   try {
-    const { plan } = req.body;
-    const result = await paymentService.createOrder({ plan });
+    const result = await paymentService.createOrder({
+      user_id: req.user.id,
+      plan: req.body.plan
+    });
     res.json(result);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -13,10 +19,9 @@ async function createOrder(req, res) {
 
 async function verifyAndActivate(req, res) {
   try {
-    const { plan, order_id, payment_id, signature } = req.body;
+    const { order_id, payment_id, signature } = req.body;
     const subscription = await paymentService.activateSubscription({
       user_id: req.user.id,
-      plan,
       order_id,
       payment_id,
       signature
@@ -45,4 +50,10 @@ async function getUsageStatus(req, res) {
   }
 }
 
-module.exports = { createOrder, verifyAndActivate, getMySubscription, getUsageStatus };
+module.exports = { 
+  createOrder, 
+  verifyAndActivate, 
+  getMySubscription, 
+  getUsageStatus,
+  getPlans
+};
