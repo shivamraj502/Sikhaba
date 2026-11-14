@@ -9,5 +9,6 @@ router.post('/create-order', subscriptionController.createOrder);
 router.post('/verify', subscriptionController.verifyAndActivate);
 router.get('/me', subscriptionController.getMySubscription);
 router.get('/usage-status', subscriptionController.getUsageStatus);
+router.get('/plans', subscriptionController.getPlans);
 
 module.exports = router;
