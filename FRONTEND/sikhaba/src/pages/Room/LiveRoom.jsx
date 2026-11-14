@@ -16,6 +16,8 @@ import {
   removeSpeaker,
 } from '../../api/roomApi';
 import { connectAudio, setMic, startAudioPlayback, disconnectAudio } from '../../webrtc/liveKitClient';
+import useDailyTimer from '../../hooks/useDailyTimer';
+import TimerBadge from '../../components/TimerBadge';
 
 function LiveRoom() {
   const { roomId } = useParams();
@@ -36,6 +38,7 @@ function LiveRoom() {
   const [activeSpeakers, setActiveSpeakers] = useState([]);
   const socketRef = useRef(null);
   const chatBottomRef = useRef(null);
+  const { usage, applyUsageUpdate } = useDailyTimer();
 
   const isHost = room && user && Number(room.host_id) === Number(user.id);
 
@@ -94,6 +97,17 @@ function LiveRoom() {
       socket.off('room-ended');
       socket.off('new-message');
       socket.off('speaker-removed');  
+      
+      socket.off("usage-update");
+      socket.off("time-limit-reached");
+
+      socket.on("usage-update", applyUsageUpdate);
+      socket.on("time-limit-reached", () => {
+        alert(
+          "Your free time for today is used up. Subscribe to keep talking.",
+        );
+        navigate("/home"); // change to '/subscription' once that page exists
+      });
 
       socket.emit('join-room', { room_id: roomId });
 
@@ -186,6 +200,8 @@ function LiveRoom() {
         socket.off('room-ended');
         socket.off('new-message');
         socket.off('speaker-removed');
+        socket.off('usage-update');
+        socket.off('time-limit-reached');
       }
     };
   }, [roomId]);
@@ -299,6 +315,8 @@ function LiveRoom() {
             {micOn ? "🎙️ Mute" : "🔇 Unmute"}
           </button>
         )}
+        
+        <TimerBadge usage={usage} />
       </div>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
