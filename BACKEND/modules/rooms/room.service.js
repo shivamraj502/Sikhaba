@@ -1,8 +1,10 @@
 const { pool } = require('../../config/db');
 const { isUserBannedFromRoom } = require('../moderation/ban.service');
 const { createToken, closeLiveKitRoom } = require('../../config/livekit');
+const { assertCanJoin } = require('../subscription/usageTimer.service');
 
 async function createRoom({ host_id, title, language }) {
+  await assertCanJoin(host_id);
   const [result] = await pool.query(
     'INSERT INTO rooms (host_id, title, language, status) VALUES (?, ?, ?, ?)',
     [host_id, title, language || null, 'live']
@@ -39,6 +41,7 @@ async function getRoomById(room_id) {
 async function joinRoom({ room_id, user_id }) {
   const banned = await isUserBannedFromRoom({ room_id, user_id });
   if (banned) throw new Error('You are banned from this room');
+  await assertCanJoin(user_id);
   return ensureParticipant({ room_id, user_id });
 }
 
