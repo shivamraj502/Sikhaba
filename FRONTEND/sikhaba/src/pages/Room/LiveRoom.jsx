@@ -106,7 +106,7 @@ function LiveRoom() {
         alert(
           "Your free time for today is used up. Subscribe to keep talking.",
         );
-        navigate("/home"); // change to '/subscription' once that page exists
+        navigate('/subscription');
       });
 
       socket.emit('join-room', { room_id: roomId });
