@@ -6,6 +6,7 @@ import Home from '../pages/Home/Home';
 import LiveRoom from '../pages/Room/LiveRoom';
 import { useAuth } from '../context/AuthContext';
 import UserProfile from '../pages/Profile/UserProfile';
+import PlanPage from '../pages/Subscription/PlanPage';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -23,6 +24,7 @@ function AppRoutes() {
       <Route path="/room/:roomId" element={user ? <LiveRoom /> : <Navigate to="/login" />} />
       <Route path="/" element={<Navigate to={user ? '/home' : '/login'} />} />
       <Route path="/profile" element={user ? <UserProfile /> : <Navigate to="/login" />} />
+      <Route path="/subscription" element={user ? <PlanPage /> : <Navigate to="/login" />} />
       
     </Routes>
   );
