@@ -7,7 +7,7 @@ async function createRoom(req, res) {
     const room = await roomService.createRoom({ host_id: req.user.id, title, language });
     res.status(201).json(room);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.code === 'LIMIT_REACHED' ? 403 : 400).json({ message: err.message, code: err.code });
   }
 }
 
@@ -25,7 +25,7 @@ async function joinRoom(req, res) {
     const participant = await roomService.joinRoom({ room_id: req.params.id, user_id: req.user.id });
     res.json(participant);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.code === 'LIMIT_REACHED' ? 403 : 400).json({ message: err.message, code: err.code });
   }
 }
 
@@ -114,7 +114,7 @@ async function getLiveKitToken(req, res) {
     });
     res.json(result);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.code === 'LIMIT_REACHED' ? 403 : 400).json({ message: err.message, code: err.code });
   }
 }
 
