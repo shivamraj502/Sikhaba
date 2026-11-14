@@ -11,13 +11,13 @@ const razorpay = new Razorpay({
 const PLANS = {
   monthly: {
     label: 'Monthly',
-    amount: 149,
+    amount: 9,
     days: 30,
     description: 'Unlimited talk time for 30 days'
   },
   yearly: {
     label: 'Yearly',
-    amount: 999,
+    amount: 99,
     days: 365,
     description: 'Unlimited talk time for a year (save 44%)'
   }
