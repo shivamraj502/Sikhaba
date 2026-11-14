@@ -56,4 +56,37 @@ async function demoteToListener(roomName, identity) {
   }
 }
 
-module.exports = { createToken, promoteToSpeaker, closeLiveKitRoom, demoteToListener };
+async function listActiveLiveKitRooms() {
+  try {
+    return await roomService.listRooms();
+  } catch (err) {
+    console.error('LiveKit listRooms failed:', err.message);
+    return [];
+  }
+}
+
+async function listLiveKitParticipants(roomName) {
+  try {
+    return await roomService.listParticipants(roomName);
+  } catch (err) {
+    return [];
+  }
+}
+
+async function removeFromLiveKit(roomName, identity) {
+  try {
+    await roomService.removeParticipant(roomName, String(identity));
+  } catch (err) {
+    console.error('LiveKit removeParticipant failed:', err.message);
+  }
+}
+
+module.exports = { 
+  createToken, 
+  promoteToSpeaker, 
+  closeLiveKitRoom, 
+  demoteToListener,
+  listActiveLiveKitRooms,
+  listLiveKitParticipants,
+  removeFromLiveKit
+};
