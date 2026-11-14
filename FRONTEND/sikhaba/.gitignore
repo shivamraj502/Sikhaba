@@ -1,0 +1,6 @@
+DATABASE
+FRONTEND/sikhaba/.env
+BACKEND/.env
+BACKEND/node_modules/
+FRONTEND/sikhaba/node_modules/
+DATABASE2.sql
