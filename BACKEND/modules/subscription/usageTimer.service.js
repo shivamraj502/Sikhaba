@@ -1,7 +1,8 @@
 const { pool } = require('../../config/db');
 
 // Override with GUEST_DAILY_LIMIT_SECONDS=120 to test quickly
-const DAILY_LIMIT_SECONDS = Number(process.env.GUEST_DAILY_LIMIT_SECONDS) || 25 * 60;
+const DAILY_LIMIT_SECONDS = Number(process.env.GUEST_DAILY_LIMIT_SECONDS) || 60 * 60;
+// const DAILY_LIMIT_SECONDS = Number(process.env.GUEST_DAILY_LIMIT_SECONDS) || 2 * 60;
 const USAGE_TZ = process.env.USAGE_TZ || 'Asia/Kolkata';
 
 // "Today" in the app's timezone, as YYYY-MM-DD
