@@ -1,7 +1,24 @@
 const { pool } = require('../config/db');
+const usageService = require('../modules/subscription/usageTimer.service');
 
 function registerRoomEvents(io, socket) {
+  
   socket.on('join-room', async ({ room_id }) => {
+
+    let status;
+    try {
+      status = await usageService.assertCanJoin(socket.user.id);
+    } catch (err) {
+      if (err.code === 'LIMIT_REACHED') {
+        socket.emit('time-limit-reached', { room_id });
+        return;
+      }
+      console.error('Usage check failed:', err.message);
+    }
+    if (status) {
+      socket.emit('usage-update', { unlimited: status.unlimited, seconds_remaining: status.seconds_remaining });
+    }
+
     socket.join(`room-${room_id}`);
     socket.currentRoom = room_id;
 
